@@ -108,7 +108,7 @@ while( 1 )
         $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
 
         my $aname = $connectedUsers[ $slot ]{ 'aname' };
-        if( $aname ne "" && lc( $aname ) ne lc( $name ) ) 
+        if( $aname && lc( $aname ) ne lc( $name ) ) 
         {
           my $memonameq = $db->quote( lc( $aname ) );
           my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
