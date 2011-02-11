@@ -228,7 +228,7 @@ while( 1 )
           }
           elsif( $acmd eq "memo" )
           {
-            if( $acmdargs =~ /([\w]+|"[\w\s]+") (.*)/)
+            if( $acmdargs =~ /([^ ]+|"[.]+") (.*)/)
             {
               my $memoname = lc( $1 );
               $memoname =~ s/\"//g;
@@ -239,6 +239,10 @@ while( 1 )
               print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
               $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
               replyToPlayer( $slot, "/memo: memo left for ${memoname}" );
+            }
+            else
+            {
+              print( "Parse failure on ${acmd} ${acmdargs}\n" );
             }
           }
         }
