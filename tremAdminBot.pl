@@ -183,62 +183,68 @@ while( 1 )
       }
       elsif( $arg0 eq "AdminCmd" )
       {
-        $args =~ /([\d-]+) \"([\w]+)\" \(\"([\w]+)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
-        my $slot = $1;
-        my $name = $2;
-        my $nameq = $db->quote( $name );
-        my $aname = $3;
-        my $alevel = $4;
-        my $acmd = $5;
-        $acmd = lc($acmd);
-        my $acmdargs = $6;
-
-        #`print "admin command: slot ${slot} name ${name} aname ${aname} admincmd ${admincmd} admincmdargs ${admincmdargs}\n";
-
-        if( $acmd eq "seen" )
+        if( $args =~ /([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/ )
         {
-          my $seenstring = $acmdargs;
-          print( "Cmd: ${name} /seen ${seenstring}\n" );
-          $seenstring = lc( $seenstring );
-          my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
-          my $q = $db->prepare("select * from seen where name like ${seenstringq}" );
-          my $str = "select * from seen where name like ${seenstringq}";
-          $q->execute;
+          my $slot = $1;
+          my $name = $2;
+          my $nameq = $db->quote( $name );
+          my $aname = $3;
+          my $alevel = $4;
+          my $acmd = $5;
+          $acmd = lc($acmd);
+          my $acmdargs = $6;
 
-          my $rescount = 0;
-          while( my $ref = $q->fetchrow_hashref( ) )
-          {
-            last if( $rescount > 3 );
-            my $seenname = $ref->{'name'};
-            my $seentime = $ref->{'time'};
-            replyToPlayer( $slot, "/seen: User ${seenname} last seen: ${seentime}" );
-            ++$rescount;
-          }
+          #`print "admin command: slot ${slot} name ${name} aname ${aname} acmdargs ${acmd} acmdargs ${acmdargs}\n";
 
-          my $ref = $q->fetchrow_hashref( );
-          if( $rescount > 0 && $ref )
+          if( $acmd eq "seen" )
           {
-            replyToPlayer( $slot, "/seen: Too many results to display. Try a more specific query." );
+            my $seenstring = $acmdargs;
+            print( "Cmd: ${name} /seen ${seenstring}\n" );
+            $seenstring = lc( $seenstring );
+            my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
+            my $q = $db->prepare("select * from seen where name like ${seenstringq}" );
+            my $str = "select * from seen where name like ${seenstringq}";
+            $q->execute;
+
+            my $rescount = 0;
+            while( my $ref = $q->fetchrow_hashref( ) )
+            {
+              last if( $rescount > 3 );
+              my $seenname = $ref->{'name'};
+              my $seentime = $ref->{'time'};
+              replyToPlayer( $slot, "/seen: User ${seenname} last seen: ${seentime}" );
+              ++$rescount;
+            }
+
+            my $ref = $q->fetchrow_hashref( );
+            if( $rescount > 0 && $ref )
+            {
+              replyToPlayer( $slot, "/seen: Too many results to display. Try a more specific query." );
+            }
+            elsif( $rescount == 0 )
+            {
+              replyToPlayer( $slot, "/seen: User ${seenstring} not found" );
+            }
           }
-          elsif( $rescount == 0 )
+          elsif( $acmd eq "memo" )
           {
-            replyToPlayer( $slot, "/seen: User ${seenstring} not found" );
+            if( $acmdargs =~ /([\w]+|"[\w\s]+") (.*)/)
+            {
+              my $memoname = lc( $1 );
+              $memoname =~ s/\"//g;
+              my $memonameq = $db->quote( $memoname );
+              my $memo = $2;
+              my $memoq = $db->quote( $memo );
+
+              print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
+              $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
+              replyToPlayer( $slot, "/memo: memo left for ${memoname}" );
+            }
           }
         }
-        elsif( $acmd eq "memo" )
+        else
         {
-          if( $acmdargs =~ /([\w]+|"[\w\s]+") (.*)/)
-          {
-            my $memoname = lc( $1 );
-            $memoname =~ s/\"//g;
-            my $memonameq = $db->quote( $memoname );
-            my $memo = $2;
-            my $memoq = $db->quote( $memo );
-
-            print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
-            $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
-            replyToPlayer( $slot, "/memo: memo left for ${memoname}" );
-          }
+          print( "Parse failure on ${arg0} ${args}\n" );
         }
       }
     }
