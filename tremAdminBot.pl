@@ -202,8 +202,7 @@ while( 1 )
             print( "Cmd: ${name} /seen ${seenstring}\n" );
             $seenstring = lc( $seenstring );
             my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
-            my $q = $db->prepare("select * from seen where name like ${seenstringq}" );
-            my $str = "select * from seen where name like ${seenstringq} order by time desc";
+            my $q = $db->prepare("select * from seen where name like ${seenstringq} order by time desc" );
             $q->execute;
 
             my $rescount = 0;
