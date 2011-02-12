@@ -203,7 +203,7 @@ while( 1 )
             $seenstring = lc( $seenstring );
             my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
             my $q = $db->prepare("select * from seen where name like ${seenstringq}" );
-            my $str = "select * from seen where name like ${seenstringq}";
+            my $str = "select * from seen where name like ${seenstringq} order by time desc";
             $q->execute;
 
             my $rescount = 0;
