@@ -258,9 +258,8 @@ while( 1 )
                 my $gipcountry = $$gipinfo{ 'country_name' };
                 my $gipcity = $$gipinfo{ 'city' };
                 my $gipregion = $$gipinfo{ 'region' };
-                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${gipcity} ${gipregion} ${gipcountry}" );
-
                 print( "Cmd: ${name} /geoip ${gipslot}\n" );
+                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${gipcity} ${gipregion} ${gipcountry}" );
               }
               else
               {
