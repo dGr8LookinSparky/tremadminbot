@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use DBI;
 use Data::Dumper;
+use Geo::IP::PurePerl;
 
 our $ip;
 our $port;
@@ -12,6 +13,7 @@ our $disablerespond;
 our $backlog;
 do 'config.cfg'; 
 
+my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
 my @connectedUsers = ( {} x 64 );
 my $servertsstr;
 my $servertsminoff;
@@ -242,6 +244,30 @@ while( 1 )
             else
             {
               print( "Parse failure on ${acmd} ${acmdargs}\n" );
+            }
+          }
+          elsif( $acmd eq "geoip" )
+          {
+            if( $acmdargs =~ /^([\d]+)/ )
+            {
+              my $gipslot = $1;
+              if( $gipslot < 64 && $connectedUsers[ $gipslot ]{ 'IP' } )
+              {
+                my $gipinfo = $gi->get_city_record_as_hash( $connectedUsers[ $gipslot ]{ 'IP' } );
+                my $gipname = $connectedUsers[ $gipslot ]{ 'name' };
+                my $gipcountry = $$gipinfo{ 'country_name' };
+                my $gipcity = $$gipinfo{ 'city' };
+                my $gipregion = $$gipinfo{ 'region' };
+                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${gipcity} ${gipregion} ${gipcountry}" );
+              }
+              else
+              {
+                replyToPlayer( $slot, "/geoip: invalid or nonconnected slot # ${gipslot}" );
+              }
+            }
+            else
+            {
+              replyToPlayer( $slot, "/geoip: usage: /geoip <slot#>" );
             }
           }
         }
