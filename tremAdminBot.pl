@@ -317,6 +317,8 @@ sub sendconsole
   {
     return;
   }
+
+  $string =~ s/'//g;
 # `screen -S tremded -p 0 -X stuff $\'\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10${string}\n\'`
 
   my $outstring = `echo -e \'\xff\xff\xff\xffrcon ${rcpass} ${string}\' | nc -w 0 -u ${ip} ${port}`;
