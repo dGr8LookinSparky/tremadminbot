@@ -3,6 +3,7 @@ use warnings;
 use DBI;
 use Data::Dumper;
 use Geo::IP::PurePerl;
+use Socket;
 
 our $ip;
 our $port;
@@ -258,8 +259,10 @@ while( 1 )
                 my $gipcountry = $$gipinfo{ 'country_name' };
                 my $gipcity = $$gipinfo{ 'city' };
                 my $gipregion = $$gipinfo{ 'region' };
+                my $gipiaddr = inet_aton( $connectedUsers[ $gipslot ]{ 'IP' } );
+                my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
                 print( "Cmd: ${name} /geoip ${gipslot}\n" );
-                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${gipcity} ${gipregion} ${gipcountry}" );
+                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
               }
               else
               {
