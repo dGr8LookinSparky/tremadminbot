@@ -58,6 +58,7 @@ while( 1 )
           my $q = $db->prepare("select * from seen where name = ${nameq}");
           $q->execute;
 
+          $connectedUsers[ $slot ]{ 'connected' } = 1;
           $connectedUsers[ $slot ]{ 'name' } = $name;
           $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
           $connectedUsers[ $slot ]{ 'IP' } = $ip;
@@ -82,7 +83,7 @@ while( 1 )
         if( $args =~ /^([\d]+)/ )
         {
           my $slot = $1;
-          $connectedUsers[ $slot ] = {};
+          $connectedUsers[ $slot ]{ 'connected' } = 0;
         }
         else
         {
@@ -249,30 +250,40 @@ while( 1 )
           }
           elsif( $acmd eq "geoip" )
           {
-            if( $acmdargs =~ /^([\d]+)/ )
+            my $gipip;
+            my $gipname;
+            print( "Cmd: ${name} /geoip ${acmdargs}\n" );
+
+            if( $acmdargs =~ /^([\d]+)$/ )
             {
               my $gipslot = $1;
               if( $gipslot < 64 && $connectedUsers[ $gipslot ]{ 'IP' } )
               {
-                my $gipinfo = $gi->get_city_record_as_hash( $connectedUsers[ $gipslot ]{ 'IP' } );
-                my $gipname = $connectedUsers[ $gipslot ]{ 'name' };
-                my $gipcountry = $$gipinfo{ 'country_name' };
-                my $gipcity = $$gipinfo{ 'city' };
-                my $gipregion = $$gipinfo{ 'region' };
-                my $gipiaddr = inet_aton( $connectedUsers[ $gipslot ]{ 'IP' } );
-                my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
-                print( "Cmd: ${name} /geoip ${gipslot}\n" );
-                replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
+                $gipip = $connectedUsers[ $gipslot ]{ 'IP' };
+                $gipname = $connectedUsers[ $gipslot ]{ 'name' };
               }
               else
               {
-                replyToPlayer( $slot, "/geoip: invalid or nonconnected slot # ${gipslot}" );
+                replyToPlayer( $slot, "/geoip: invalid or unused slot #${gipslot}" );
+                next;
               }
+            }
+            elsif( $acmdargs =~ /([0-9.]+)/ )
+            {
+              $gipip = $gipname = $1;
             }
             else
             {
-              replyToPlayer( $slot, "/geoip: usage: /geoip <slot#>" );
+              replyToPlayer( $slot, "/geoip: usage: /geoip <slot#|IP>" );
+              next;
             }
+            my $gipinfo = $gi->get_city_record_as_hash( $gipip );
+            my $gipcountry = $$gipinfo{ 'country_name' };
+            my $gipcity = $$gipinfo{ 'city' };
+            my $gipregion = $$gipinfo{ 'region' };
+            my $gipiaddr = inet_aton( $gipip );
+            my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
+            replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
           }
         }
         else
