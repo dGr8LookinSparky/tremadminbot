@@ -4,6 +4,7 @@ use DBI;
 use Data::Dumper;
 use Geo::IP::PurePerl;
 use Socket;
+use enum;
 
 our $ip;
 our $port;
@@ -19,6 +20,8 @@ my @connectedUsers = ( {} x 64 );
 my $servertsstr;
 my $servertsminoff;
 my $servertssecoff;
+
+use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 
 open( FILE, "<",  $log ) or die "open failed";
 if( !$backlog )
@@ -58,11 +61,13 @@ while( 1 )
           my $q = $db->prepare("select * from seen where name = ${nameq}");
           $q->execute;
 
-          $connectedUsers[ $slot ]{ 'connected' } = 1;
+          $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTING;
           $connectedUsers[ $slot ]{ 'name' } = $name;
           $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
           $connectedUsers[ $slot ]{ 'IP' } = $ip;
           $connectedUsers[ $slot ]{ 'GUID' } = $guid;
+          $connectedUsers[ $slot ]{ 'aname' } = "";
+          $connectedUsers[ $slot ]{ 'alevel' } = "";
 
           if( my $ref = $q->fetchrow_hashref( ) )
           {
@@ -83,7 +88,7 @@ while( 1 )
         if( $args =~ /^([\d]+)/ )
         {
           my $slot = $1;
-          $connectedUsers[ $slot ]{ 'connected' } = 0;
+          $connectedUsers[ $slot ]{ 'connected' } = CON_DISCONNECTED;
         }
         else
         {
@@ -95,7 +100,13 @@ while( 1 )
         $args =~ /([\d-]+)/;
         my $slot = $1;
         my $name = $connectedUsers[ $slot ]{ 'name' };
+        $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTED;
         #`print( "Begin: ${name}\n" );
+
+        if( $connectedUsers[ $slot ]{ 'alevel' } eq "" )
+        {
+          $connectedUsers[ $slot ]{ 'alevel' } = 0;
+        }
 
         my $memonameq = $db->quote( lc( $name ) );
 
@@ -215,18 +226,18 @@ while( 1 )
               last if( $rescount > 3 );
               my $seenname = $ref->{'name'};
               my $seentime = $ref->{'time'};
-              replyToPlayer( $slot, "/seen: User ${seenname} last seen: ${seentime}" );
+              replyToPlayer( $slot, "seen: User ${seenname} last seen: ${seentime}" );
               ++$rescount;
             }
 
             my $ref = $q->fetchrow_hashref( );
             if( $rescount > 0 && $ref )
             {
-              replyToPlayer( $slot, "/seen: Too many results to display. Try a more specific query." );
+              replyToPlayer( $slot, "seen: Too many results to display. Try a more specific query." );
             }
             elsif( $rescount == 0 )
             {
-              replyToPlayer( $slot, "/seen: User ${seenstring} not found" );
+              replyToPlayer( $slot, "seen: User ${seenstring} not found" );
             }
           }
           elsif( $acmd eq "memo" )
@@ -241,7 +252,7 @@ while( 1 )
 
               print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
               $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
-              replyToPlayer( $slot, "/memo: memo left for ${memoname}" );
+              replyToPlayer( $slot, "memo: memo left for ${memoname}" );
             }
             else
             {
@@ -264,7 +275,7 @@ while( 1 )
               }
               else
               {
-                replyToPlayer( $slot, "/geoip: invalid or unused slot #${gipslot}" );
+                replyToPlayer( $slot, "geoip: invalid or unused slot #${gipslot}" );
                 next;
               }
             }
@@ -274,7 +285,7 @@ while( 1 )
             }
             else
             {
-              replyToPlayer( $slot, "/geoip: usage: /geoip <slot#|IP>" );
+              replyToPlayer( $slot, "geoip: usage: geoip <slot#|IP>" );
               next;
             }
             my $gipinfo = $gi->get_city_record_as_hash( $gipip );
@@ -283,7 +294,41 @@ while( 1 )
             my $gipregion = $$gipinfo{ 'region' };
             my $gipiaddr = inet_aton( $gipip );
             my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
-            replyToPlayer( $slot, "/geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
+            replyToPlayer( $slot, "geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
+          }
+          elsif( $acmd eq "l1" )
+          {
+            if( $acmdargs =~ /^([\d]+)$/ )
+            {
+              my $targslot = $1;
+
+              print( "Cmd: ${name} /l1 ${acmdargs}\n" );
+              if( $targslot < 64 && 
+                  $connectedUsers[ $targslot ]{ 'connected' } == CON_CONNECTED && 
+                  $connectedUsers[ $targslot ]{ 'IP' } )
+              {
+                if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
+                {
+                  printToPlayers( "l1: ${name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
+                  sendconsole( "setlevel ${targslot} 1" );
+                }
+                else
+                {
+                  replyToPlayer( $slot, "l1: User #${targslot} is not level 0" );
+                  next;
+                }
+              }
+              else
+              {
+                replyToPlayer( $slot, "l1: invalid or unused slot #${targslot}" );
+                next;
+              }
+            }
+            else
+            {
+              replyToPlayer( $slot, "l1: usage: l1 <slot# of level 0 user>" );
+              next;
+            }
           }
         }
         else
@@ -320,7 +365,12 @@ sub replyToPlayer
   {
     sendconsole( "echo ${string}" );
   }
+}
 
+sub printToPlayers
+{
+  my $string = shift;
+  sendconsole( "pr -1 ${string}" );
 }
 
 
