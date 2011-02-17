@@ -6,6 +6,7 @@ use Geo::IP::PurePerl;
 use Socket;
 use enum;
 
+# config
 our $ip;
 our $port;
 our $rcpass;
@@ -14,14 +15,19 @@ our $db;
 our $disablerespond;
 our $backlog;
 do 'config.cfg'; 
-
 my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
-my @connectedUsers = ( {} x 64 );
+
+# allocate
+use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
+my @connectedUsers;
+for( my $i = 0; $i < 64; $i++ )
+{
+  push( @connectedUsers, {'connected' => CON_DISCONNECTED} );
+}
+
 my $servertsstr;
 my $servertsminoff;
 my $servertssecoff;
-
-use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 
 open( FILE, "<",  $log ) or die "open failed";
 if( !$backlog )
