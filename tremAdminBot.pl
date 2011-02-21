@@ -29,6 +29,15 @@ my $servertsstr;
 my $servertsminoff;
 my $servertssecoff;
 
+my $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
+my $clientConnectRegExp = qr/([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
+my $clientDisconnectRegExp = qr/^([\d]+)/;
+my $clientBeginRegExp = qr/([\d-]+)/;
+my $adminAuthRegExp = qr/([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
+my $clientRenameRegExp = qr/([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
+my $sayRegExp = qr/([\d-]+) \"(.+)\": (.*)/;
+my $adminCmdRegExp = qr/([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
+
 open( FILE, "<",  $log ) or die "open failed";
 if( !$backlog )
 {
@@ -43,7 +52,7 @@ while( 1 )
 
     my $timestamp = timestamp( );
     
-    if( $line =~ /^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/ )
+    if( $line =~ /$lineRegExp/ )
     {
       $servertsminoff = $1;
       $servertssecoff = $2;
@@ -54,7 +63,7 @@ while( 1 )
 
       if( $arg0 eq "ClientConnect" )
       {
-        if( $args =~ /([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/ )
+        if( $args =~ /$clientConnectRegExp/ )
         {
           my $slot = $1;
           my $ip = $2;
@@ -91,7 +100,7 @@ while( 1 )
       }
       if( $arg0 eq "ClientDisconnect" )
       {
-        if( $args =~ /^([\d]+)/ )
+        if( $args =~ /$clientDisconnectRegExp/ )
         {
           my $slot = $1;
           $connectedUsers[ $slot ]{ 'connected' } = CON_DISCONNECTED;
@@ -103,7 +112,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientBegin" )
       {
-        $args =~ /([\d-]+)/;
+        $args =~ /$clientBeginRegExp/;
         my $slot = $1;
         my $name = $connectedUsers[ $slot ]{ 'name' };
         $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTED;
@@ -147,7 +156,7 @@ while( 1 )
       }
       elsif( $arg0 eq "AdminAuth" )
       {
-        if( $args =~/([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/ )
+        if( $args =~/$adminAuthRegExp/ )
         {
           my $slot = $1;
           my $name = $2;
@@ -168,7 +177,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientRename" )
       {
-        if( $args =~ /([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/ )
+        if( $args =~ /$clientRenameRegExp/ )
         {
           my $slot = $1;
           my $ip = $2;
@@ -190,21 +199,20 @@ while( 1 )
       {
         $servertsstr = $args;
       }
-      elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
-      {
-        $args =~ /([\d-]+) \"(.+)\": (.*)/;
-        my $slot = $1;
-        my $player = $2;
-        my $said = $3;
-    #   print "said: ${said}\n";
-        if( $said =~ /fuck you, console/i )
-        {
-          replyToPlayer( $slot, "No, fuck you, ${player}!" );
-        }
-      }
+      #`elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
+      #`{
+        #`$args =~ /$sayRegExp/;
+        #`my $slot = $1;
+        #`my $player = $2;
+        #`my $said = $3;
+        #`if( $said =~ /fuck you, console/i )
+        #`{
+          #`replyToPlayer( $slot, "No, fuck you, ${player}!" );
+        #`}
+      #`}
       elsif( $arg0 eq "AdminCmd" )
       {
-        if( $args =~ /([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/ )
+        if( $args =~ /$adminCmdRegExp/ )
         {
           my $slot = $1;
           my $name = $2;
