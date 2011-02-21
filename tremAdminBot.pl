@@ -368,8 +368,7 @@ close( FILE );
 
 sub replyToPlayer
 {
-  my $slot = shift;
-  my $string = shift;
+  my( $slot, $string ) = @_;
 
   if( $slot > 0 )
   {
@@ -383,14 +382,14 @@ sub replyToPlayer
 
 sub printToPlayers
 {
-  my $string = shift;
+  my( $string ) = @_;
   sendconsole( "pr -1 ${string}" );
 }
 
 
 sub sendconsole
 {
-  my $string = shift;
+  my( $string ) = @_;
   if( $disablerespond || $backlog )
   {
     return;
