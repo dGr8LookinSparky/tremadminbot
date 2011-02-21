@@ -30,13 +30,13 @@ my $servertsminoff;
 my $servertssecoff;
 
 my $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
-my $clientConnectRegExp = qr/([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
+my $clientConnectRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
 my $clientDisconnectRegExp = qr/^([\d]+)/;
-my $clientBeginRegExp = qr/([\d-]+)/;
-my $adminAuthRegExp = qr/([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
-my $clientRenameRegExp = qr/([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
-my $sayRegExp = qr/([\d-]+) \"(.+)\": (.*)/;
-my $adminCmdRegExp = qr/([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
+my $clientBeginRegExp = qr/^([\d-]+)/;
+my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
+my $clientRenameRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
+my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
+my $adminCmdRegExp = qr/^([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
 
 open( FILE, "<",  $log ) or die "open failed";
 if( !$backlog )
