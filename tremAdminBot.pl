@@ -14,6 +14,7 @@ our $log;
 our $db;
 our $disablerespond;
 our $backlog;
+our $startupBacklogAmt;
 do 'config.cfg'; 
 my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
 
@@ -38,10 +39,12 @@ my $clientRenameRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*
 my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
 my $adminCmdRegExp = qr/^([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
 
+my $startupBacklog = 1;
+
 open( FILE, "<",  $log ) or die "open failed";
 if( !$backlog )
 {
-  seek( FILE, 0, 2 ) or die "seek fail";  # need to use 2 instead of SEEK_END. No idea why.
+  seek( FILE, $startupBacklogAmt, 2 ) or die "seek fail";  # need to use 2 instead of SEEK_END. No idea why.
 }
 while( 1 )
 { 
@@ -84,6 +87,8 @@ while( 1 )
           $connectedUsers[ $slot ]{ 'aname' } = "";
           $connectedUsers[ $slot ]{ 'alevel' } = "";
 
+          next if( $startupBacklog );
+
           if( my $ref = $q->fetchrow_hashref( ) )
           {
             $db->do( "UPDATE seen SET time=${timestamp} WHERE name=${nameq}" );
@@ -98,7 +103,7 @@ while( 1 )
           print( "Parse failure on ${arg0} ${args}\n" );
         }
       }
-      if( $arg0 eq "ClientDisconnect" )
+      elsif( $arg0 eq "ClientDisconnect" )
       {
         if( $args =~ /$clientDisconnectRegExp/ )
         {
@@ -122,6 +127,8 @@ while( 1 )
         {
           $connectedUsers[ $slot ]{ 'alevel' } = 0;
         }
+
+        next if( $startupBacklog );
 
         my $memonameq = $db->quote( lc( $name ) );
 
@@ -199,18 +206,10 @@ while( 1 )
       {
         $servertsstr = $args;
       }
-      #`elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
-      #`{
-        #`$args =~ /$sayRegExp/;
-        #`my $slot = $1;
-        #`my $player = $2;
-        #`my $said = $3;
-        #`if( $said =~ /fuck you, console/i )
-        #`{
-          #`replyToPlayer( $slot, "No, fuck you, ${player}!" );
-        #`}
-      #`}
-      elsif( $arg0 eq "AdminCmd" )
+
+      next if( $startupBacklog );
+
+      if( $arg0 eq "AdminCmd" )
       {
         if( $args =~ /$adminCmdRegExp/ )
         {
@@ -350,6 +349,17 @@ while( 1 )
           print( "Parse failure on ${arg0} ${args}\n" );
         }
       }
+      #`elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
+      #`{
+        #`$args =~ /$sayRegExp/;
+        #`my $slot = $1;
+        #`my $player = $2;
+        #`my $said = $3;
+        #`if( $said =~ /hi console/i )
+        #`{
+          #`replyToPlayer( $slot, "Hi ${player}!" );
+        #`}
+      #`}
     }
   }
   else
@@ -359,6 +369,12 @@ while( 1 )
       print "End of backlog\n";
       exit;
     }
+
+    if( $startupBacklog )
+    {
+      $startupBacklog = 0;
+    }
+
     seek( FILE, 0, 1 ); 
     sleep 1; 
   }
@@ -386,11 +402,10 @@ sub printToPlayers
   sendconsole( "pr -1 ${string}" );
 }
 
-
 sub sendconsole
 {
   my( $string ) = @_;
-  if( $disablerespond || $backlog )
+  if( $disablerespond || $backlog || $startupBacklog )
   {
     return;
   }
