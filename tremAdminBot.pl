@@ -307,6 +307,9 @@ while( 1 )
             my $gipregion = $$gipinfo{ 'region' };
             my $gipiaddr = inet_aton( $gipip );
             my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
+            $gipcountry ||= "";
+            $gipcity ||= "";
+            $gipregion ||= "";
             replyToPlayer( $slot, "geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
           }
           elsif( $acmd eq "l1" )
