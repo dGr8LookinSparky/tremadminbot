@@ -213,18 +213,18 @@ while( 1 )
               my $seenname = $ref->{'name'};
               my $seentime = $ref->{'time'};
               my $seencount = $ref->{'count'};
-              replyToPlayer( $slot, "seen: User ${seenname} seen ${seencount} times, last: ${seentime}" );
+              replyToPlayer( $slot, "^3seen:^7 User ${seenname} seen ${seencount} times, last: ${seentime}" );
               ++$rescount;
             }
 
             my $ref = $q->fetchrow_hashref( );
             if( $rescount > 0 && $ref )
             {
-              replyToPlayer( $slot, "seen: Too many results to display. Try a more specific query." );
+              replyToPlayer( $slot, "^3seen:^7 Too many results to display. Try a more specific query." );
             }
             elsif( $rescount == 0 )
             {
-              replyToPlayer( $slot, "seen: User ${seenstring} not found" );
+              replyToPlayer( $slot, "^3seen:^7 User ${seenstring} not found" );
             }
           }
           elsif( $acmd eq "memo" )
@@ -261,26 +261,26 @@ while( 1 )
                   {
                     my $memonameq = $db->quote( $memoname );
                     $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
-                    replyToPlayer( $slot, "memo: memo left for ${memoname}" );
+                    replyToPlayer( $slot, "^3memo:^7 memo left for ${memoname}" );
                   }
                   elsif( scalar @matches == 1 )
                   {
                     my $memonameq = $db->quote( $lastmatch );
                     $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
-                    replyToPlayer( $slot, "memo: memo left for ${lastmatch}" );
+                    replyToPlayer( $slot, "^3memo:^7 memo left for ${lastmatch}" );
                   }
                   elsif( scalar @matches > 1 )
                   {
-                    replyToPlayer( $slot, "memo: multiple matches. Be more specific: " . join( ", ", @matches ) );
+                    replyToPlayer( $slot, "^3memo:^7 multiple matches. Be more specific: " . join( ", ", @matches ) );
                   }
                   else
                   {
-                    replyToPlayer( $slot, "memo: invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
+                    replyToPlayer( $slot, "^3memo:^7 invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
                   }
                 }
                 else
                 {
-                  replyToPlayer( $slot, "memo send: syntax: memo send <name> <message>" );
+                  replyToPlayer( $slot, "^3memo:^7 syntax: memo send <name> <message>" );
                 }
               }
               elsif( $memocmd eq "listsent" )
@@ -301,7 +301,7 @@ while( 1 )
                 }
                 $max = scalar @memos if( scalar @memos < $max );
                 
-                replyToPlayer( $slot, "memo: showing ${max} of " . scalar @memos . " sent memos" );
+                replyToPlayer( $slot, "^3memo:^7 showing ${max} of " . scalar @memos . " sent memos" );
 
                 for( my $i = 0; $i < $max; $i++ )
                 {
@@ -321,27 +321,27 @@ while( 1 )
                   my $count = $db->do( "DELETE FROM memo WHERE sentbyg = \'${guid}\' AND ID = ${memoIDq}" );
                   if( $count ne "0E0" )
                   {
-                    replyToPlayer( $slot, "memo: deleted sent memo ${memoID}" );
+                    replyToPlayer( $slot, "^3memo:^7 deleted sent memo ${memoID}" );
                   }
                   else
                   {
-                    replyToPlayer( $slot, "memo: invalid memoID ${memoID}" );
+                    replyToPlayer( $slot, "^3memo:^7 invalid memoID ${memoID}" );
                   }
                 }
                 else
                 {
-                  replyToPlayer( $slot, "memo: syntax: memo unsend <memoID>" );
+                  replyToPlayer( $slot, "^3memo:^7 syntax: memo unsend <memoID>" );
                 }
 
               }
               else
               {
-                replyToPlayer( $slot, "memo: commands: send, listsent, unsend" );
+                replyToPlayer( $slot, "^3memo:^7 commands: send, listsent, unsend" );
               }
             }
             else
             {
-              replyToPlayer( $slot, "memo: commands: send, listsent, unsend" );
+              replyToPlayer( $slot, "^3memo:^7 commands: send, listsent, unsend" );
             }
           }
           elsif( $acmd eq "geoip" )
@@ -360,7 +360,7 @@ while( 1 )
               }
               else
               {
-                replyToPlayer( $slot, "geoip: invalid or unused slot #${gipslot}" );
+                replyToPlayer( $slot, "^3geoip:^7 invalid or unused slot #${gipslot}" );
                 next;
               }
             }
@@ -370,7 +370,7 @@ while( 1 )
             }
             else
             {
-              replyToPlayer( $slot, "geoip: usage: geoip <slot#|IP>" );
+              replyToPlayer( $slot, "^3geoip:^7 usage: geoip <slot#|IP>" );
               next;
             }
             my $gipinfo = $gi->get_city_record_as_hash( $gipip );
@@ -382,7 +382,7 @@ while( 1 )
             $gipcountry ||= "";
             $gipcity ||= "";
             $gipregion ||= "";
-            replyToPlayer( $slot, "geoip: ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
+            replyToPlayer( $slot, "^3geoip:^7 ${gipname} connecting from ${giphostname} ${gipcity} ${gipregion} ${gipcountry}" );
           }
           elsif( $acmd eq "l1" )
           {
@@ -397,24 +397,24 @@ while( 1 )
               {
                 if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
                 {
-                  printToPlayers( "l1: ${name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
+                  printToPlayers( "^3l1:^7 ${name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
                   sendconsole( "setlevel ${targslot} 1" );
                 }
                 else
                 {
-                  replyToPlayer( $slot, "l1: User #${targslot} is not level 0" );
+                  replyToPlayer( $slot, "^3l1:^7 User #${targslot} is not level 0" );
                   next;
                 }
               }
               else
               {
-                replyToPlayer( $slot, "l1: invalid or unused slot #${targslot}" );
+                replyToPlayer( $slot, "^3l1:^7 invalid or unused slot #${targslot}" );
                 next;
               }
             }
             else
             {
-              replyToPlayer( $slot, "l1: usage: l1 <slot# of level 0 user>" );
+              replyToPlayer( $slot, "^3l1:^7 usage: l1 <slot# of level 0 user>" );
               next;
             }
           }
