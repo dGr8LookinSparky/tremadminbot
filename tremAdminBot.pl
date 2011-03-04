@@ -364,7 +364,7 @@ while( 1 )
                 next;
               }
             }
-            elsif( $acmdargs =~ /([0-9.]+)/ )
+            elsif( $acmdargs =~ /^([0-9.]+)/ )
             {
               $gipip = $gipname = $1;
             }
