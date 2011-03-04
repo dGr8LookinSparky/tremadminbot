@@ -38,6 +38,9 @@ my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
 my $clientRenameRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
 my $adminCmdRegExp = qr/^([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
+my $nameRegExpUnquoted= qr/.+/;
+my $nameRegExpQuoted = qr/\".+\"/;
+my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 
 my $startupBacklog = 1;
 
@@ -82,6 +85,8 @@ while( 1 )
           $connectedUsers[ $slot ]{ 'GUID' } = $guid;
           $connectedUsers[ $slot ]{ 'aname' } = "";
           $connectedUsers[ $slot ]{ 'alevel' } = "";
+
+          $connectedUsers[ $slot ]{ 'IP' } ||= "127.0.0.1";
 
           next if( $startupBacklog );
 
@@ -236,13 +241,14 @@ while( 1 )
 
               if( $memocmd eq "send" )
               {
-                if( $acmdargs =~ /^([\w]+) ([^ ]+|"[.]+") (.*)/ )
+                if( $acmdargs =~ /^([\w]+) ($nameRegExp) (.*)/ )
                 {
                   my $memoname = lc( $2 );
-                  $memoname =~ s/\"//g;
-                  my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
                   my $memo = $3;
                   my $memoq = $db->quote( $memo );
+
+                  $memoname =~ s/\"//g;
+                  my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
                   my $q = $db->prepare( "select * from seen where name LIKE ${memonamelq} AND time > datetime( ${timestamp}, \'-3 months\')" );
                   $q->execute;
@@ -350,27 +356,35 @@ while( 1 )
             my $gipname;
             print( "Cmd: ${name} /geoip ${acmdargs}\n" );
 
-            if( $acmdargs =~ /^([\d]+)$/ )
+            if( $acmdargs =~ /^([\d]+\.[\d]+\.[\d]+\.[\d]+)/ )
             {
-              my $gipslot = $1;
-              if( $gipslot < 64 && $connectedUsers[ $gipslot ]{ 'IP' } )
+              $gipip = $gipname = $1;
+            }
+            elsif( $acmdargs =~ /^($nameRegExp)/ )
+            {
+              my $giptarg = $1;
+              my $err = "";
+              my $gipslot = slotFromString( $giptarg, 0, \$err );
+              if( $gipslot < 0 )
+              {
+                replyToPlayer( $slot, "^3geoip:^7 ${err}" );
+                next;
+              }
+
+              if( $connectedUsers[ $gipslot ]{ 'IP' } )
               {
                 $gipip = $connectedUsers[ $gipslot ]{ 'IP' };
                 $gipname = $connectedUsers[ $gipslot ]{ 'name' };
               }
               else
               {
-                replyToPlayer( $slot, "^3geoip:^7 invalid or unused slot #${gipslot}" );
+                replyToPlayer( $slot, "^3geoip:^7 Unused slot #${giptarg}" );
                 next;
               }
             }
-            elsif( $acmdargs =~ /^([0-9.]+)/ )
-            {
-              $gipip = $gipname = $1;
-            }
             else
             {
-              replyToPlayer( $slot, "^3geoip:^7 usage: geoip <slot#|IP>" );
+              replyToPlayer( $slot, "^3geoip:^7 usage: geoip <name|slot#|IP>" );
               next;
             }
             my $gipinfo = $gi->get_city_record_as_hash( $gipip );
@@ -386,35 +400,24 @@ while( 1 )
           }
           elsif( $acmd eq "l1" )
           {
-            if( $acmdargs =~ /^([\d]+)$/ )
-            {
-              my $targslot = $1;
+            print( "Cmd: ${name} /l1 ${acmdargs}\n" );
 
-              print( "Cmd: ${name} /l1 ${acmdargs}\n" );
-              if( $targslot < 64 && 
-                  $connectedUsers[ $targslot ]{ 'connected' } == CON_CONNECTED && 
-                  $connectedUsers[ $targslot ]{ 'IP' } )
-              {
-                if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
-                {
-                  printToPlayers( "^3l1:^7 ${name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
-                  sendconsole( "setlevel ${targslot} 1" );
-                }
-                else
-                {
-                  replyToPlayer( $slot, "^3l1:^7 User #${targslot} is not level 0" );
-                  next;
-                }
-              }
-              else
-              {
-                replyToPlayer( $slot, "^3l1:^7 invalid or unused slot #${targslot}" );
-                next;
-              }
+            my $err = "";
+            my $targslot = slotFromString( $acmdargs, 1, \$err );
+            if( $targslot < 0 )
+            {
+              replyToPlayer( $slot, "^3l1:^7 ${err}" );
+              next;
+            }
+
+            if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
+            {
+              printToPlayers( "^3l1:^7 ${name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
+              sendconsole( "setlevel ${targslot} 1" );
             }
             else
             {
-              replyToPlayer( $slot, "^3l1:^7 usage: l1 <slot# of level 0 user>" );
+              replyToPlayer( $slot, "^3l1:^7 User #${targslot} is not level 0" );
               next;
             }
           }
@@ -551,6 +554,62 @@ sub memocheck
       replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
     }
     $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
+  }
+}
+
+sub slotFromString
+{
+  my ( $string, $requireConnected, $err ) = @_;
+  $string = lc( $string );
+
+  if( $string =~ /^[\d]+/ )
+  {
+    if( $string >= 64 )
+    {
+      $$err = "Invalid slot #${string}";
+      return( -1 );
+    }
+
+    if( $requireConnected && $connectedUsers[ $string ]{ 'connected' } != CON_CONNECTED )
+    {
+      $$err = "Slot #${string} is not connected";
+      return( -1 );
+    }
+    return $string;
+  }
+
+  my $exact = -1;
+  my @matches;
+  for( my $i = 0; $i < 64; $i++ )
+  {
+    my $uname = $connectedUsers[ $i ]{ 'name' };
+    next if( !$uname );
+
+    next if( $requireConnected && $connectedUsers[ $i ]{ 'connected' } != CON_CONNECTED );
+
+    $exact = $i if( lc( $uname ) eq $string );
+
+    push( @matches, $i ) if( $uname =~ /$string/ );
+  }
+
+  my $n = scalar @matches;
+  if( $exact >= 0 )
+  {
+    return $exact;
+  }
+  elsif( $n == 1 )
+  {
+    return $matches[ 0 ];
+  }
+  elsif( $n > 0 )
+  {
+    $$err = "Multiple name matches. Be more specific or use a slot number";
+    return( -1 );
+  }
+  else
+  {
+    $$err = "No matches for ${string}";
+    return( -1 );
   }
 }
 
