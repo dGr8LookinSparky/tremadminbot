@@ -116,36 +116,8 @@ while( 1 )
 
         next if( $startupBacklog );
 
-        my $memonameq = $db->quote( lc( $name ) );
+        memocheck( $slot );
 
-        my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
-        $q->execute;
-
-        while( my $ref = $q->fetchrow_hashref( ) )
-        {
-          my $senttime = $ref->{'senttime'};
-          my $memo = $ref->{'msg'};
-          my $sentby = $ref->{'sentby'};
-          replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
-        }
-        $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
-
-        my $aname = $connectedUsers[ $slot ]{ 'aname' };
-        if( $aname && lc( $aname ) ne lc( $name ) ) 
-        {
-          my $memonameq = $db->quote( lc( $aname ) );
-          my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
-          $q->execute;
-
-          while( my $ref = $q->fetchrow_hashref( ) )
-          {
-            my $senttime = $ref->{'senttime'};
-            my $memo = $ref->{'msg'};
-            my $sentby = $ref->{'sentby'};
-            replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
-          }
-          $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
-        }
       }
       elsif( $arg0 eq "AdminAuth" )
       {
@@ -186,6 +158,7 @@ while( 1 )
           next if( $startupBacklog );
 
           updateSeen( $name, $timestamp );
+          memocheck( $slot );
         }
         else
         {
@@ -250,13 +223,45 @@ while( 1 )
             {
               my $memoname = lc( $1 );
               $memoname =~ s/\"//g;
-              my $memonameq = $db->quote( $memoname );
+              my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
               my $memo = $2;
               my $memoq = $db->quote( $memo );
 
               print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
-              $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
-              replyToPlayer( $slot, "memo: memo left for ${memoname}" );
+
+              my $q = $db->prepare( "select * from seen where name LIKE ${memonamelq} AND time > datetime( ${timestamp}, \'-3 months\')" );
+              $q->execute;
+
+              my @matches;
+              my $lastmatch;
+              my $exact = 0;
+              while( my $ref = $q->fetchrow_hashref( ) )
+              {
+                $exact = 1 if( $ref->{ 'name' } eq $memoname );
+                $lastmatch = $ref->{ 'name' };
+                push( @matches, $ref->{ 'name' } );
+              }
+
+              if( $exact )
+              {
+                my $memonameq = $db->quote( $memoname );
+                $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
+                replyToPlayer( $slot, "memo: memo left for ${memoname}" );
+              }
+              elsif( scalar @matches == 1 )
+              {
+                my $memonameq = $db->quote( $lastmatch );
+                $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
+                replyToPlayer( $slot, "memo: memo left for ${lastmatch}" );
+              }
+              elsif( scalar @matches > 1 )
+              {
+                replyToPlayer( $slot, "memo: multiple matches. Be more specific: " . join( ", ", @matches ) );
+              }
+              else
+              {
+                replyToPlayer( $slot, "memo: invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
+              }
             }
             else
             {
@@ -433,6 +438,43 @@ sub updateSeen
   else
   {
     $db->do( "INSERT INTO seen (name, time, count) VALUES (${nameq}, ${timestamp}, 1)" );
+  }
+}
+
+sub memocheck
+{
+  my( $slot ) = @_;
+  my $name = $connectedUsers[ $slot ]{ 'name' };
+
+  my $memonameq = $db->quote( lc( $name ) );
+
+  my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
+  $q->execute;
+
+  while( my $ref = $q->fetchrow_hashref( ) )
+  {
+    my $senttime = $ref->{ 'senttime' };
+    my $memo = $ref->{ 'msg' };
+    my $sentby = $ref->{ 'sentby' };
+    replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
+  }
+  $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
+
+  my $aname = $connectedUsers[ $slot ]{ 'aname' };
+  if( $aname && lc( $aname ) ne lc( $name ) ) 
+  {
+    my $memonameq = $db->quote( lc( $aname ) );
+    my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
+    $q->execute;
+
+    while( my $ref = $q->fetchrow_hashref( ) )
+    {
+      my $senttime = $ref->{'senttime'};
+      my $memo = $ref->{'msg'};
+      my $sentby = $ref->{'sentby'};
+      replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
+    }
+    $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
   }
 }
 
