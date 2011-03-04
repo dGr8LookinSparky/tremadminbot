@@ -184,6 +184,16 @@ while( 1 )
           my $acmd = $5;
           $acmd = lc($acmd);
           my $acmdargs = $6;
+          my $guid;
+
+          if( $slot != -1 )
+          {
+            $guid = $connectedUsers[ $slot ]{ 'GUID' };
+          }
+          else
+          {
+            $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+          }
 
           #`print "admin command: slot ${slot} name ${name} aname ${aname} acmdargs ${acmd} acmdargs ${acmdargs}\n";
 
@@ -219,48 +229,114 @@ while( 1 )
           }
           elsif( $acmd eq "memo" )
           {
-            if( $acmdargs =~ /([^ ]+|"[.]+") (.*)/)
+            if( $acmdargs =~ /^([\w]+)/ )
             {
-              my $memoname = lc( $1 );
-              $memoname =~ s/\"//g;
-              my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
-              my $memo = $2;
-              my $memoq = $db->quote( $memo );
+              my $memocmd = lc( $1 );
+              print( "Cmd: ${name} /memo ${acmdargs}\n" );
 
-              print( "Cmd: ${name} /memo ${memoname} ${memo}\n" );
-
-              my $q = $db->prepare( "select * from seen where name LIKE ${memonamelq} AND time > datetime( ${timestamp}, \'-3 months\')" );
-              $q->execute;
-
-              my @matches;
-              my $lastmatch;
-              my $exact = 0;
-              while( my $ref = $q->fetchrow_hashref( ) )
+              if( $memocmd eq "send" )
               {
-                $exact = 1 if( $ref->{ 'name' } eq $memoname );
-                $lastmatch = $ref->{ 'name' };
-                push( @matches, $ref->{ 'name' } );
+                if( $acmdargs =~ /^([\w]+) ([^ ]+|"[.]+") (.*)/ )
+                {
+                  my $memoname = lc( $2 );
+                  $memoname =~ s/\"//g;
+                  my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
+                  my $memo = $3;
+                  my $memoq = $db->quote( $memo );
+
+                  my $q = $db->prepare( "select * from seen where name LIKE ${memonamelq} AND time > datetime( ${timestamp}, \'-3 months\')" );
+                  $q->execute;
+
+                  my @matches;
+                  my $lastmatch;
+                  my $exact = 0;
+                  while( my $ref = $q->fetchrow_hashref( ) )
+                  {
+                    $exact = 1 if( $ref->{ 'name' } eq $memoname );
+                    $lastmatch = $ref->{ 'name' };
+                    push( @matches, $ref->{ 'name' } );
+                  }
+
+                  if( $exact )
+                  {
+                    my $memonameq = $db->quote( $memoname );
+                    $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
+                    replyToPlayer( $slot, "memo: memo left for ${memoname}" );
+                  }
+                  elsif( scalar @matches == 1 )
+                  {
+                    my $memonameq = $db->quote( $lastmatch );
+                    $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
+                    replyToPlayer( $slot, "memo: memo left for ${lastmatch}" );
+                  }
+                  elsif( scalar @matches > 1 )
+                  {
+                    replyToPlayer( $slot, "memo: multiple matches. Be more specific: " . join( ", ", @matches ) );
+                  }
+                  else
+                  {
+                    replyToPlayer( $slot, "memo: invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
+                  }
+                }
+                else
+                {
+                  replyToPlayer( $slot, "memo send: syntax: memo send <name> <message>" );
+                }
               }
+              elsif( $memocmd eq "listsent" )
+              {
+                my $q = $db->prepare( "select * from memo where sentbyg = \'${guid}\' order by senttime asc" );
+                $q->execute;
 
-              if( $exact )
-              {
-                my $memonameq = $db->quote( $memoname );
-                $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
-                replyToPlayer( $slot, "memo: memo left for ${memoname}" );
+                my @memos;
+                my $max = 3;
+                while( my $ref = $q->fetchrow_hashref( ) )
+                {
+                  my %thismemo;
+                  $thismemo{ 'ID' } = $ref->{ 'ID' };
+                  $thismemo{ 'name' } = $ref->{ 'name' };
+                  $thismemo{ 'msg' } = $ref->{ 'msg' };
+
+                  push( @memos, \%thismemo );
+                }
+                $max = scalar @memos if( scalar @memos < $max );
+                
+                replyToPlayer( $slot, "memo: showing ${max} of " . scalar @memos . " sent memos" );
+
+                for( my $i = 0; $i < $max; $i++ )
+                {
+                  my $id = $memos[ $i ]{ 'ID' };
+                  my $to = $memos[ $i ]{ 'name' };
+                  my $msg = $memos[ $i ]{ 'msg' };
+                  replyToPlayer( $slot, " ID: ${id} To: ${to} Msg: ${msg}" );
+                }
               }
-              elsif( scalar @matches == 1 )
+              elsif( $memocmd eq "delsent" )
               {
-                my $memonameq = $db->quote( $lastmatch );
-                $db->do( "INSERT INTO memo (name, sentby, senttime, msg) VALUES (${memonameq}, ${nameq}, ${timestamp}, ${memoq})" );
-                replyToPlayer( $slot, "memo: memo left for ${lastmatch}" );
-              }
-              elsif( scalar @matches > 1 )
-              {
-                replyToPlayer( $slot, "memo: multiple matches. Be more specific: " . join( ", ", @matches ) );
+                if( $acmdargs =~ /^([\w]+) ([\d]+)/ )
+                {
+                  my $memoID = $2;
+                  my $memoIDq = $db->quote( $memoID );
+
+                  my $count = $db->do( "DELETE FROM memo WHERE sentbyg = \'${guid}\' AND ID = ${memoIDq}" );
+                  if( $count ne "0E0" )
+                  {
+                    replyToPlayer( $slot, "memo: deleted sent memo ${memoID}" );
+                  }
+                  else
+                  {
+                    replyToPlayer( $slot, "memo: invalid memoID ${memoID}" );
+                  }
+                }
+                else
+                {
+                  replyToPlayer( $slot, "memo: syntax: memo delsent <memoID>" );
+                }
+
               }
               else
               {
-                replyToPlayer( $slot, "memo: invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
+                replyToPlayer( $slot, "memo: commands: send, listsent, delsent" );
               }
             }
             else
