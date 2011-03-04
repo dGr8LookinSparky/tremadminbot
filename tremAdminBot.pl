@@ -73,11 +73,7 @@ while( 1 )
           my $guid = $3;
           my $name = $4;
           my $nameColored = $5;
-          my $nameq = lc( $name );
-          $nameq = $db->quote( $nameq );
           #print "slot ${slot} ip ${ip} guid ${guid} name ${name}\n";
-          my $q = $db->prepare("select * from seen where name = ${nameq}");
-          $q->execute;
 
           $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTING;
           $connectedUsers[ $slot ]{ 'name' } = $name;
@@ -89,14 +85,7 @@ while( 1 )
 
           next if( $startupBacklog );
 
-          if( my $ref = $q->fetchrow_hashref( ) )
-          {
-            $db->do( "UPDATE seen SET time=${timestamp} WHERE name=${nameq}" );
-          }
-          else
-          {
-            $db->do( "INSERT INTO seen (name, time) VALUES (${nameq}, ${timestamp})" );
-          }
+          updateSeen( $name, $timestamp );
         }
         else
         {
@@ -123,10 +112,7 @@ while( 1 )
         $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTED;
         #`print( "Begin: ${name}\n" );
 
-        if( $connectedUsers[ $slot ]{ 'alevel' } eq "" )
-        {
-          $connectedUsers[ $slot ]{ 'alevel' } = 0;
-        }
+        $connectedUsers[ $slot ]{ 'alevel' } ||= 0;
 
         next if( $startupBacklog );
 
@@ -196,6 +182,10 @@ while( 1 )
           $connectedUsers[ $slot ]{ 'previousName' } = $previousName;
           $connectedUsers[ $slot ]{ 'name' } = $name;
           $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
+
+          next if( $startupBacklog );
+
+          updateSeen( $name, $timestamp );
         }
         else
         {
@@ -239,7 +229,8 @@ while( 1 )
               last if( $rescount > 3 );
               my $seenname = $ref->{'name'};
               my $seentime = $ref->{'time'};
-              replyToPlayer( $slot, "seen: User ${seenname} last seen: ${seentime}" );
+              my $seencount = $ref->{'count'};
+              replyToPlayer( $slot, "seen: User ${seenname} seen ${seencount} times, last: ${seentime}" );
               ++$rescount;
             }
 
@@ -423,6 +414,26 @@ sub sendconsole
   }
   print "Sent: ${string}\n";
   return $outstring;
+}
+
+sub updateSeen
+{
+  my( $name, $timestamp ) = @_;
+  my $nameq = lc( $name );
+  $nameq = $db->quote( $nameq );
+  my $q = $db->prepare("select * from seen where name = ${nameq}");
+  $q->execute;
+
+  if( my $ref = $q->fetchrow_hashref( ) )
+  {
+    my $count = $ref->{'count'};
+    $count++;
+    $db->do( "UPDATE seen SET time=${timestamp}, count=${count} WHERE name=${nameq}" );
+  }
+  else
+  {
+    $db->do( "INSERT INTO seen (name, time, count) VALUES (${nameq}, ${timestamp}, 1)" );
+  }
 }
 
 sub timestamp
