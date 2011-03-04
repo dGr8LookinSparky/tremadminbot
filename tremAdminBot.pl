@@ -311,7 +311,7 @@ while( 1 )
                   replyToPlayer( $slot, " ID: ${id} To: ${to} Msg: ${msg}" );
                 }
               }
-              elsif( $memocmd eq "delsent" )
+              elsif( $memocmd eq "unsend" )
               {
                 if( $acmdargs =~ /^([\w]+) ([\d]+)/ )
                 {
@@ -330,18 +330,18 @@ while( 1 )
                 }
                 else
                 {
-                  replyToPlayer( $slot, "memo: syntax: memo delsent <memoID>" );
+                  replyToPlayer( $slot, "memo: syntax: memo unsend <memoID>" );
                 }
 
               }
               else
               {
-                replyToPlayer( $slot, "memo: commands: send, listsent, delsent" );
+                replyToPlayer( $slot, "memo: commands: send, listsent, unsend" );
               }
             }
             else
             {
-              print( "Parse failure on ${acmd} ${acmdargs}\n" );
+              replyToPlayer( $slot, "memo: commands: send, listsent, unsend" );
             }
           }
           elsif( $acmd eq "geoip" )
