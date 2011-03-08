@@ -5,6 +5,7 @@ use Data::Dumper;
 use Geo::IP::PurePerl;
 use Socket;
 use enum;
+use File::ReadBackwards;
 
 # config
 our $ip;
@@ -45,10 +46,35 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 my $startupBacklog = 1;
 
 open( FILE, "<",  $log ) or die "open failed";
-if( !$backlog )
+
+if( !$backlog ) # Seek back to the start of the current game game
 {
-  seek( FILE, $startupBacklogAmt, 2 ) or die "seek fail";  # need to use 2 instead of SEEK_END. No idea why.
+  my $bw = File::ReadBackwards->new( $log );
+  my $seekPos = 0;
+
+  while( defined( my $line = $bw->readline( ) ) )
+  {
+    if( $line =~ /$lineRegExp/ )
+    {
+      my $arg0 = $3;
+      if( $arg0 eq "InitGame" )
+      {
+        $seekPos = $bw->tell( );
+        last( );
+      }
+    }
+  }
+
+  if( $seekPos )
+  {
+    seek( FILE, $seekPos, 0 ) or die "seek fail";
+  }
+  else
+  {
+    seek( FILE, 0, 2 ) or die "seek fail";  # need to use 2 instead of SEEK_END. No idea why.
+  }
 }
+
 while( 1 )
 { 
   if( my $line = <FILE> ) 
