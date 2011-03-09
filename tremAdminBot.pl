@@ -58,7 +58,7 @@ do 'config.cfg';
 
 
 $SIG{INT} = \&cleanup;
-$SIG{__DIE__} = \&cleanup;
+$SIG{__DIE__} = \&errorHandler;
 
 my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", {RaiseError => 1, AutoCommit => 1} ) or die "Database error: " . $DBI::errstr;
@@ -713,6 +713,12 @@ sub timestamp
 
   $out = $db->quote( $out );
   return $out;
+}
+
+sub errorHandler
+{
+  print "Error: $_[ 0 ]";
+  cleanup( );
 }
 
 sub cleanup
