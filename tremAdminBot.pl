@@ -5,22 +5,63 @@ use Data::Dumper;
 use Geo::IP::PurePerl;
 use Socket;
 use enum;
+use FileHandle;
 use File::ReadBackwards;
 
-# config
-our $ip;
-our $port;
-our $rcpass;
-our $log;
-our $db;
-our $disablerespond;
-our $backlog;
-our $startupBacklogAmt;
+
+use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
+use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
+
+# config: best to leave these defaults alone and set each var you want to override from default in config.cfg
+#         e.g. if you want to change $logpath, put a line that says 
+#              $logpath = "/somewherelse/games.log";
+#              in config.cfg
+
+# Path to games.log
+our $logpath = "games.log";
+
+# Where do we store the database
+our $dbfile = "bot.db";
+
+# Are we reading from the whole logfile to populate the db? Generally this is 0
+our $backlog = 0;
+
+# How should we send output responses back to the server?
+#  SEND_DISABLE: Do not send output responses back to the server.
+#  SEND_PIPE:    Write to a pipefile, as configured by the com_pipefile option. Best option if available.
+#                Fast and robust.
+#  SEND_RCON:    Use rcon. Requires netcat, ideally a freeBSD netcat.
+#                The only option that can get a response back from commands, but we don't use that anyway.
+#                Slow and shows up in log files as rcon usage.
+#  SEND_SCREEN:  Send a command to the screen session tremded is running in.
+#                Very annoying if humans also attach to and use screen.
+our $sendMethod = SEND_PIPE;
+
+# rcon password, only used for SEND_RCON
+our $rcpass = "myrconpassword";
+
+# server ip, only used for SEND_RCON
+our $ip = "127.0.0.1";
+
+# server port, only used for SEND_RCON
+our $port = "30720";
+
+#  path to communication pipe to write to, only used for SEND_PIPE
+our $pipefilePath = ".tremded_pipe";
+
+# name of screen session, only used for SEND_SCREEN
+our $screenName = "tremded";
+
+# CONFIG STUFF ENDS HERE
 do 'config.cfg'; 
+
+
+
+
 my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
+my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", {RaiseError => 1, AutoCommit => 1} ) or die "Database error: " . $DBI::errstr;
 
 # allocate
-use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 my @connectedUsers;
 for( my $i = 0; $i < 64; $i++ )
 {
@@ -45,11 +86,17 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 
 my $startupBacklog = 1;
 
-open( FILE, "<",  $log ) or die "open failed";
+open( FILE, "<",  $logpath ) or die "open logfile failed: ${logpath}";
+if( $sendMethod == SEND_PIPE )
+{
+  die( "Could not open pipefile ${pipefilePath}. Is tremded running?" ) if( !-e $pipefilePath );
+  open( SENDPIPE, ">", $pipefilePath ); 
+  SENDPIPE->autoflush( 1 );
+}
 
 if( !$backlog ) # Seek back to the start of the current game game
 {
-  my $bw = File::ReadBackwards->new( $log );
+  my $bw = File::ReadBackwards->new( $logpath );
   my $seekPos = 0;
 
   while( defined( my $line = $bw->readline( ) ) )
@@ -484,7 +531,9 @@ while( 1 )
   }
 }
 
+# FIXME: Not actually run ever
 close( FILE );
+close( SENDPIPE ) if( $sendMethod == SEND_PIPE );
 
 sub replyToPlayer
 {
@@ -509,15 +558,28 @@ sub printToPlayers
 sub sendconsole
 {
   my( $string ) = @_;
-  if( $disablerespond || $backlog || $startupBacklog )
-  {
-    return;
-  }
+  return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
   $string =~ s/'//g;
-# `screen -S tremded -p 0 -X stuff $\'\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10${string}\n\'`
+  my $outstring = "";
 
-  my $outstring = `echo -e \'\xff\xff\xff\xffrcon ${rcpass} ${string}\' | nc -w 0 -u ${ip} ${port}`;
+  if( $sendMethod == SEND_PIPE )
+  {
+    print( SENDPIPE "${string}\n" ) or die "Broken pipe!";
+  }
+  elsif( $sendMethod == SEND_RCON )
+  {
+    $outstring = `echo -e \'\xff\xff\xff\xffrcon ${rcpass} ${string}\' | nc -w 0 -u ${ip} ${port}`;
+  }
+  elsif( $sendMethod == SEND_SCREEN )
+  {
+    `screen -S ${screenName} -p 0 -X stuff $\'\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10${string}\n\'`
+  }
+  else
+  {
+    die "Invalid $sendMethod configured";
+  }
+
   if( $outstring )
   {
     #print "Output: $outstring";
