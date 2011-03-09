@@ -719,5 +719,6 @@ sub cleanup
 {
   close( FILE );
   close( SENDPIPE ) if( $sendMethod == SEND_PIPE );
+  $db->disconnect( ) or warn( "Disconnection failed: $DBI::errstr\n" );
   exit;
 }
