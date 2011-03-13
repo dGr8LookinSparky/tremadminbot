@@ -133,24 +133,15 @@ while( 1 )
 
     my $timestamp = timestamp( );
     
-    if( $line =~ /$lineRegExp/ )
+    if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ /$lineRegExp/ )
     {
-      $servertsminoff = $1;
-      $servertssecoff = $2;
-      my $arg0 = $3;
-      my $args = $4;
 
       #`print "arg0: ${arg0} args: ${args}\n";
 
       if( $arg0 eq "ClientConnect" )
       {
-        if( $args =~ /$clientConnectRegExp/ )
+        if( my ( $slot, $ip, $guid, $name, $nameColored ) = $args =~ /$clientConnectRegExp/ )
         {
-          my $slot = $1;
-          my $ip = $2;
-          my $guid = $3;
-          my $name = $4;
-          my $nameColored = $5;
           #print "slot ${slot} ip ${ip} guid ${guid} name ${name}\n";
 
           $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTING;
@@ -174,9 +165,8 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientDisconnect" )
       {
-        if( $args =~ /$clientDisconnectRegExp/ )
+        if( my ( $slot ) = $args =~ /$clientDisconnectRegExp/ )
         {
-          my $slot = $1;
           $connectedUsers[ $slot ]{ 'connected' } = CON_DISCONNECTED;
         }
         else
@@ -186,8 +176,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientBegin" )
       {
-        $args =~ /$clientBeginRegExp/;
-        my $slot = $1;
+        my ( $slot ) = $args =~ /$clientBeginRegExp/;
         my $name = $connectedUsers[ $slot ]{ 'name' };
         $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTED;
         #`print( "Begin: ${name}\n" );
@@ -201,14 +190,8 @@ while( 1 )
       }
       elsif( $arg0 eq "AdminAuth" )
       {
-        if( $args =~/$adminAuthRegExp/ )
+        if( my ( $slot, $name, $aname, $alevel, $guid ) = $args =~ /$adminAuthRegExp/ )
         {
-          my $slot = $1;
-          my $name = $2;
-          my $aname = $3;
-          my $alevel = $4;
-          my $guid = $5;
-
           #`print "Auth: Slot: ${slot} name: ${name} aname: ${aname} alevel: ${alevel} guid: ${guid}\n";
 
           $connectedUsers[ $slot ]{ 'aname' } = $aname;
@@ -222,15 +205,8 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientRename" )
       {
-        if( $args =~ /$clientRenameRegExp/ )
+        if( my ( $slot, $ip, $guid, $previousName, $name, $nameColored ) = $args =~ /$clientRenameRegExp/ )
         {
-          my $slot = $1;
-          my $ip = $2;
-          my $guid = $3;
-          my $previousName = $4;
-          my $name = $5;
-          my $nameColored = $6;
-
           $connectedUsers[ $slot ]{ 'previousName' } = $previousName;
           $connectedUsers[ $slot ]{ 'name' } = $name;
           $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
@@ -254,16 +230,10 @@ while( 1 )
 
       if( $arg0 eq "AdminCmd" )
       {
-        if( $args =~ /$adminCmdRegExp/ )
+        if( my( $slot, $name, $aname, $alevel, $acmd, $acmdargs ) = $args =~ /$adminCmdRegExp/ )
         {
-          my $slot = $1;
-          my $name = $2;
           my $nameq = $db->quote( $name );
-          my $aname = $3;
-          my $alevel = $4;
-          my $acmd = $5;
           $acmd = lc($acmd);
-          my $acmdargs = $6;
           my $guid;
 
           if( $slot != -1 )
