@@ -86,7 +86,7 @@ my $nameRegExpUnquoted= qr/.+/;
 my $nameRegExpQuoted = qr/\".+\"/;
 my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 
-my $startupBacklog = 1;
+my $startupBacklog = 0;
 
 open( FILE, "<",  $logpath ) or die "open logfile failed: ${logpath}";
 if( $sendMethod == SEND_PIPE )
@@ -100,6 +100,7 @@ if( !$backlog ) # Seek back to the start of the current game game
 {
   my $bw = File::ReadBackwards->new( $logpath );
   my $seekPos = 0;
+  $startupBacklog = 1;
 
   while( defined( my $line = $bw->readline( ) ) )
   {
