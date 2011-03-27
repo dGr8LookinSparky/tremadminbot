@@ -13,7 +13,7 @@ use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
 
 # config: best to leave these defaults alone and set each var you want to override from default in config.cfg
-#         e.g. if you want to change $logpath, put a line that says 
+#         e.g. if you want to change $logpath, put a line that says
 #              $logpath = "/somewherelse/games.log";
 #              in config.cfg
 
@@ -53,7 +53,7 @@ our $pipefilePath = ".tremded_pipe";
 our $screenName = "tremded";
 
 # CONFIG STUFF ENDS HERE
-do 'config.cfg'; 
+do 'config.cfg';
 
 
 
@@ -75,11 +75,11 @@ my $servertsminoff;
 my $servertssecoff;
 
 my $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
-my $clientConnectRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
+my $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
 my $clientDisconnectRegExp = qr/^([\d]+)/;
 my $clientBeginRegExp = qr/^([\d-]+)/;
 my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
-my $clientRenameRegExp = qr/^([\d]+) \[([0-9.]*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
+my $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
 my $adminCmdRegExp = qr/^([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
 my $nameRegExpUnquoted= qr/.+/;
@@ -92,7 +92,7 @@ open( FILE, "<",  $logpath ) or die "open logfile failed: ${logpath}";
 if( $sendMethod == SEND_PIPE )
 {
   die( "Could not open pipefile ${pipefilePath}. Is tremded running?" ) if( !-e $pipefilePath );
-  open( SENDPIPE, ">", $pipefilePath ); 
+  open( SENDPIPE, ">", $pipefilePath );
   SENDPIPE->autoflush( 1 );
 }
 
@@ -125,14 +125,14 @@ if( !$backlog ) # Seek back to the start of the current game game
 }
 
 while( 1 )
-{ 
-  if( my $line = <FILE> ) 
-  { 
+{
+  if( my $line = <FILE> )
+  {
     chomp $line;
     #`print "${line}\n";
 
     my $timestamp = timestamp( );
-    
+
     if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ /$lineRegExp/ )
     {
 
@@ -154,9 +154,8 @@ while( 1 )
 
           $connectedUsers[ $slot ]{ 'IP' } ||= "127.0.0.1";
 
+          updateUsers( $timestamp, $slot );
           next if( $startupBacklog );
-
-          updateSeen( $name, $timestamp );
         }
         else
         {
@@ -185,7 +184,7 @@ while( 1 )
 
         next if( $startupBacklog );
 
-        memocheck( $slot );
+        memocheck( $slot, $timestamp );
 
       }
       elsif( $arg0 eq "AdminAuth" )
@@ -197,6 +196,11 @@ while( 1 )
           $connectedUsers[ $slot ]{ 'aname' } = $aname;
           $connectedUsers[ $slot ]{ 'alevel' } = $alevel;
           $connectedUsers[ $slot ]{ 'GUID' } = $guid;
+          my $userID = $connectedUsers[ $slot ]{ 'userID' };
+
+          my $anameq = $db->quote( $aname );
+
+          $db->do( "UPDATE users SET name=${anameq}, adminLevel=$alevel WHERE userID=${userID}" );
         }
         else
         {
@@ -211,10 +215,7 @@ while( 1 )
           $connectedUsers[ $slot ]{ 'name' } = $name;
           $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
 
-          next if( $startupBacklog );
-
-          updateSeen( $name, $timestamp );
-          memocheck( $slot );
+          updateNames( $timestamp, $slot );
         }
         else
         {
@@ -245,6 +246,8 @@ while( 1 )
             $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
           }
 
+          my $userID = $connectedUsers[ $slot ]{ 'userID' };
+
           #`print "admin command: slot ${slot} name ${name} aname ${aname} acmdargs ${acmd} acmdargs ${acmdargs}\n";
 
           if( $acmd eq "seen" )
@@ -253,7 +256,7 @@ while( 1 )
             print( "Cmd: ${name} /seen ${seenstring}\n" );
             $seenstring = lc( $seenstring );
             my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
-            my $q = $db->prepare("select * from seen where name like ${seenstringq} order by count desc" );
+            my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringq} ORDER BY useCount DESC" );
             $q->execute;
 
             my $rescount = 0;
@@ -261,9 +264,9 @@ while( 1 )
             {
               last if( $rescount > 3 );
               my $seenname = $ref->{'name'};
-              my $seentime = $ref->{'time'};
-              my $seencount = $ref->{'count'};
-              replyToPlayer( $slot, "^3seen:^7 User ${seenname} seen ${seencount} times, last: ${seentime}" );
+              my $seentime = $ref->{'seenTime'};
+              my $seencount = $ref->{'useCount'};
+              replyToPlayer( $slot, "^3seen:^7 Username ${seenname} seen ${seencount} times, last: ${seentime}" );
               ++$rescount;
             }
 
@@ -274,7 +277,7 @@ while( 1 )
             }
             elsif( $rescount == 0 )
             {
-              replyToPlayer( $slot, "^3seen:^7 User ${seenstring} not found" );
+              replyToPlayer( $slot, "^3seen:^7 Username ${seenstring} not found" );
             }
           }
           elsif( $acmd eq "memo" )
@@ -295,30 +298,33 @@ while( 1 )
                   $memoname =~ s/\"//g;
                   my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
-                  my $q = $db->prepare( "select * from seen where name LIKE ${memonamelq} AND time > datetime( ${timestamp}, \'-3 months\')" );
+                  my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\')" );
                   $q->execute;
 
                   my @matches;
                   my $lastmatch;
                   my $exact = 0;
+                  my $i = 0;
                   while( my $ref = $q->fetchrow_hashref( ) )
                   {
-                    $exact = 1 if( $ref->{ 'name' } eq $memoname );
-                    $lastmatch = $ref->{ 'name' };
-                    push( @matches, $ref->{ 'name' } );
+                    $exact = $i if( $ref->{ 'name' } eq $memoname );
+                    $lastmatch = $ref->{ 'userID' };
+                    push( @matches, $ref->{ 'nameColored' } );
+                    last if( $exact );
+                    $i++;
                   }
 
                   if( $exact )
                   {
                     my $memonameq = $db->quote( $memoname );
-                    $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
-                    replyToPlayer( $slot, "^3memo:^7 memo left for ${memoname}" );
+                    $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES (${lastmatch}, ${userID}, ${timestamp}, ${memoq})" );
+                    replyToPlayer( $slot, "^3memo:^7 memo left for ${matches[ $exact ]}" );
                   }
                   elsif( scalar @matches == 1 )
                   {
                     my $memonameq = $db->quote( $lastmatch );
-                    $db->do( "INSERT INTO memo (name, sentby, sentbyg, senttime, msg) VALUES (${memonameq}, ${nameq}, \'${guid}\', ${timestamp}, ${memoq})" );
-                    replyToPlayer( $slot, "^3memo:^7 memo left for ${lastmatch}" );
+                    $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES (${lastmatch}, ${userID}, ${timestamp}, ${memoq})" );
+                    replyToPlayer( $slot, "^3memo:^7 memo left for ${matches[ 0 ]}" );
                   }
                   elsif( scalar @matches > 1 )
                   {
@@ -326,7 +332,7 @@ while( 1 )
                   }
                   else
                   {
-                    replyToPlayer( $slot, "^3memo:^7 invalid user: ${memoname} not seen in last 3 months. Use EXACT names!" );
+                    replyToPlayer( $slot, "^3memo:^7 invalid user: ${memoname} not seen in last 3 months." );
                   }
                 }
                 else
@@ -334,33 +340,81 @@ while( 1 )
                   replyToPlayer( $slot, "^3memo:^7 syntax: memo send <name> <message>" );
                 }
               }
-              elsif( $memocmd eq "listsent" )
+              elsif( $memocmd eq "list" )
               {
-                my $q = $db->prepare( "select * from memo where sentbyg = \'${guid}\' order by senttime asc" );
+                my $q = $db->prepare( "SELECT memos.memoID, memos.readTime, users.name FROM memos JOIN users ON users.userID = memos.sentBy WHERE memos.userID = ${userID} ORDER BY memoID ASC" );
                 $q->execute;
 
                 my @memos;
-                my $max = 3;
+                my @readMemos;
                 while( my $ref = $q->fetchrow_hashref( ) )
                 {
-                  my %thismemo;
-                  $thismemo{ 'ID' } = $ref->{ 'ID' };
-                  $thismemo{ 'name' } = $ref->{ 'name' };
-                  $thismemo{ 'msg' } = $ref->{ 'msg' };
+                  my $name = $ref->{ 'name' };
+                  my $readTime = $ref->{ 'readTime' };
+                  my $memoID = $ref->{ 'memoID' };
 
-                  push( @memos, \%thismemo );
+                  if( $readTime )
+                  {
+                    push( @readMemos, ${memoID} );
+                  }
+                  else
+                  {
+                    push( @memos, ${memoID} );
+                  }
                 }
-                $max = scalar @memos if( scalar @memos < $max );
-                
-                replyToPlayer( $slot, "^3memo:^7 showing ${max} of " . scalar @memos . " sent memos" );
+                my $newCount = scalar @memos;
+                my $readCount = scalar @readMemos;
+                replyToPlayer( $slot, "^3memo:^7 You have ${newCount} new Memos: " . join( ", ", @memos ) . ". Use /memo read <memoID>" ) if( $newCount );
+                replyToPlayer( $slot, "^3memo:^7 You have ${readCount} read Memos: " . join( ", ", @readMemos ) ) if( $readCount );
+                replyToPlayer( $slot, "^3memo:^7 You have no memos." ) if( !$newCount && !$readCount );
+              }
 
-                for( my $i = 0; $i < $max; $i++ )
+              elsif( $memocmd eq "read" )
+              {
+                if( $acmdargs =~ /^([\w]+) ([\d]+)/ )
                 {
-                  my $id = $memos[ $i ]{ 'ID' };
-                  my $to = $memos[ $i ]{ 'name' };
-                  my $msg = $memos[ $i ]{ 'msg' };
-                  replyToPlayer( $slot, " ID: ${id} To: ${to} Msg: ${msg}" );
+                  my $memoID = $2;
+                  my $memoIDq = $db->quote( $memoID );
+
+                  my $q = $db->prepare( "SELECT memos.memoID, memos.sentTime, memos.msg, users.name FROM memos JOIN users ON users.userID = memos.sentBy WHERE memos.memoID = ${memoIDq} AND memos.userID = ${userID}" );
+                  $q->execute;
+                  if( my $ref = $q->fetchrow_hashref( ) )
+                  {
+                    my $id = $ref->{ 'memoID' };
+                    my $from = $ref->{ 'name' };
+                    my $sentTime = $ref->{ 'sentTime' };
+                    my $msg = $ref->{ 'msg' };
+
+                    replyToPlayer( $slot, "Memo: ${id} From: ${from} Sent: ${sentTime}" );
+                    replyToPlayer( $slot, " Msg: ${msg}" );
+
+                    $db->do( "UPDATE memos SET readTime=${timestamp} WHERE memoID=${memoIDq}" );
+                  }
+                  else
+                  {
+                    replyToPlayer( $slot, "^3memo:^7: Invalid memoID: ${memoID}" );
+                  }
                 }
+                else
+                {
+                  replyToPlayer( $slot, "^3memo:^7 syntax: memo read <memoID>" );
+                }
+              }
+              elsif( $memocmd eq "outbox" )
+              {
+                my $q = $db->prepare( "SELECT memos.memoID, users.name FROM memos JOIN users ON users.userID = memos.userID WHERE memos.sentBy = ${userID} AND memos.readTime IS NULL ORDER BY memoID ASC" );
+                $q->execute;
+
+                my @memos;
+                while( my $ref = $q->fetchrow_hashref( ) )
+                {
+                  my $name = $ref->{ 'name' };
+                  my $memoID = $ref->{ 'memoID' };
+
+                  push( @memos, "ID: ${memoID} To: ${name}" );
+                }
+                replyToPlayer( $slot, "^3memo:^7 Unread Sent Memos: " . join( ", ", @memos ) ) if( scalar @memos );
+                replyToPlayer( $slot, "^3memo:^7 You have no unread sent memos." ) if( ! scalar @memos );
               }
               elsif( $memocmd eq "unsend" )
               {
@@ -369,7 +423,7 @@ while( 1 )
                   my $memoID = $2;
                   my $memoIDq = $db->quote( $memoID );
 
-                  my $count = $db->do( "DELETE FROM memo WHERE sentbyg = \'${guid}\' AND ID = ${memoIDq}" );
+                  my $count = $db->do( "DELETE FROM memos WHERE sentBy = ${userID} AND memoID = ${memoIDq}" );
                   if( $count ne "0E0" )
                   {
                     replyToPlayer( $slot, "^3memo:^7 deleted sent memo ${memoID}" );
@@ -383,16 +437,41 @@ while( 1 )
                 {
                   replyToPlayer( $slot, "^3memo:^7 syntax: memo unsend <memoID>" );
                 }
+              }
+              elsif( $memocmd eq "clear" )
+              {
+                if( $acmdargs =~ /^([\w]+) ([\w]+)/ )
+                {
+                  my $clearcmd = lc( $2 );
 
+                  if( $clearcmd eq "all" )
+                  {
+                    my $count = $db->do( "DELETE FROM memos WHERE userID = ${userID}" );
+                    replyToPlayer( $slot, "^3memo:^7 cleared ${count} memos" );
+                  }
+                  elsif( $clearcmd eq "read" )
+                  {
+                    my $count = $db->do( "DELETE FROM memos WHERE userID = ${userID} AND readTime IS NOT NULL" );
+                    replyToPlayer( $slot, "^3memo:^7 cleared ${count} read memos" );
+                  }
+                  else
+                  {
+                    replyToPlayer( $slot, "^3memo:^7 syntax: memo clear <ALL|READ>" );
+                  }
+                }
+                else
+                {
+                  replyToPlayer( $slot, "^3memo:^7 syntax: memo clear <ALL|READ>" );
+                }
               }
               else
               {
-                replyToPlayer( $slot, "^3memo:^7 commands: send, listsent, unsend" );
+                replyToPlayer( $slot, "^3memo:^7 commands: list, read, send, outbox, unsend, clear" );
               }
             }
             else
             {
-              replyToPlayer( $slot, "^3memo:^7 commands: send, listsent, unsend" );
+              replyToPlayer( $slot, "^3memo:^7 commands: list, read, send, outbox, unsend, clear" );
             }
           }
           elsif( $acmd eq "geoip" )
@@ -486,7 +565,7 @@ while( 1 )
     }
   }
   else
-  { 
+  {
     if( $backlog )
     {
       print "End of backlog\n";
@@ -498,8 +577,8 @@ while( 1 )
       $startupBacklog = 0;
     }
 
-    seek( FILE, 0, 1 ); 
-    sleep 1; 
+    seek( FILE, 0, 1 );
+    sleep 1;
   }
 }
 
@@ -556,61 +635,93 @@ sub sendconsole
   return $outstring;
 }
 
-sub updateSeen
+sub updateUsers
 {
-  my( $name, $timestamp ) = @_;
-  my $nameq = lc( $name );
-  $nameq = $db->quote( $nameq );
-  my $q = $db->prepare("select * from seen where name = ${nameq}");
-  $q->execute;
+  my( $timestamp, $slot ) = @_;
+  my $guid = $connectedUsers[ $slot ]{ 'GUID' };
+  my $guidq = $db->quote( $guid );
+  my $name = lc( $connectedUsers[ $slot ]{ 'name' } );
+  my $nameq = $db->quote( $name );
+  my $ip = $connectedUsers[ $slot ]{ 'IP' };
+  my $ipq = $db->quote( $ip );
 
-  if( my $ref = $q->fetchrow_hashref( ) )
+  my $region = "";
+  my $regionq = $db->quote( $region );
+  my $country = "";
+  my $countryq = $db->quote( $country );
+
+  my $usersq = $db->prepare( "SELECT * FROM users WHERE GUID = ${guidq}" );
+  $usersq->execute;
+
+  my $user;
+
+  if( $user = $usersq->fetchrow_hashref( ) )
+  { }
+  else
   {
-    my $count = $ref->{'count'};
-    $count++;
-    $db->do( "UPDATE seen SET time=${timestamp}, count=${count} WHERE name=${nameq}" );
+    $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${regionq}, ${countryq} )" );
+    $usersq->execute;
+    $user = $usersq->fetchrow_hashref( );
+  }
+
+  my $userID = $user->{ 'userID' };
+  my $adminLevel = $user->{ 'adminLevel' };
+  $connectedUsers[ $slot ]{ 'userID' } = $userID;
+
+  return if( $startupBacklog );
+
+  updateNames( $timestamp, $slot );
+
+  if( !$adminLevel )
+  {
+    $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq}, region=${regionq}, country=${countryq} WHERE userID=${userID}" );
   }
   else
   {
-    $db->do( "INSERT INTO seen (name, time, count) VALUES (${nameq}, ${timestamp}, 1)" );
+    $db->do( "UPDATE users SET useCount=useCount+1, seenTime=${timestamp}, ip=${ipq}, region=${regionq}, country=${countryq} WHERE userID=${userID}" );
   }
+}
+
+sub updateNames
+{
+  my( $timestamp, $slot ) = @_;
+  my $name = lc( $connectedUsers[ $slot ]{ 'name' } );
+  my $nameq = $db->quote( $name );
+  my $namec = $connectedUsers[ $slot ]{ 'nameColored' };
+  my $namecq = $db->quote( $namec );
+  my $userID = $connectedUsers[ $slot ]{ 'userID' };
+
+  my $namesq = $db->prepare( "SELECT * FROM names WHERE name = ${nameq}" );
+  $namesq->execute;
+
+  my $namesref;
+
+  if( my $ref = $namesq->fetchrow_hashref( ) )
+  { }
+  else
+  {
+    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount, seenTime ) VALUES ( ${nameq}, ${namecq}, ${userID}, 0, ${timestamp} )" );
+  }
+
+  return if( $startupBacklog );
+
+  $db->do( "UPDATE names SET usecount=useCount+1, seenTime=${timestamp}, userID=${userID} WHERE name = ${nameq}" );
 }
 
 sub memocheck
 {
-  my( $slot ) = @_;
+  my( $slot, $timestamp ) = @_;
   my $name = $connectedUsers[ $slot ]{ 'name' };
+  my $userID = $connectedUsers[ $slot ]{ 'userID' };
 
-  my $memonameq = $db->quote( lc( $name ) );
-
-  my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
+  my $q = $db->prepare( "SELECT COUNT(1) FROM memos WHERE memos.userID = ${userID} AND memos.readTime IS NULL" );
   $q->execute;
 
-  while( my $ref = $q->fetchrow_hashref( ) )
-  {
-    my $senttime = $ref->{ 'senttime' };
-    my $memo = $ref->{ 'msg' };
-    my $sentby = $ref->{ 'sentby' };
-    replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
-  }
-  $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
+  my $ref = $q->fetchrow_hashref( );
+  my $count = $ref->{ 'COUNT(1)' };
 
-  my $aname = $connectedUsers[ $slot ]{ 'aname' };
-  if( $aname && lc( $aname ) ne lc( $name ) ) 
-  {
-    my $memonameq = $db->quote( lc( $aname ) );
-    my $q = $db->prepare("SELECT * FROM memo WHERE name = ${memonameq}" );
-    $q->execute;
+  replyToPlayer( $slot, "You have ${count} new memos. Use /memo list to read." ) if $count > 0;
 
-    while( my $ref = $q->fetchrow_hashref( ) )
-    {
-      my $senttime = $ref->{'senttime'};
-      my $memo = $ref->{'msg'};
-      my $sentby = $ref->{'sentby'};
-      replyToPlayer( $slot, "Memo from user ${sentby} [${senttime}]: ${memo}" );
-    }
-    $db->do( "DELETE FROM memo WHERE name = ${memonameq}" );
-  }
 }
 
 sub slotFromString
@@ -677,7 +788,7 @@ sub timestamp
     $out =~ s/\//-/g;
     return( $db->quote( $out ) );
   }
-  my $q = $db->prepare( "select DATETIME('now','localtime')" );
+  my $q = $db->prepare( "SELECT DATETIME('now','localtime')" );
   $q->execute;
   my $out = $q->fetchrow_array( );
 
