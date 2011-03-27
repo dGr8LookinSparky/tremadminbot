@@ -645,11 +645,6 @@ sub updateUsers
   my $ip = $connectedUsers[ $slot ]{ 'IP' };
   my $ipq = $db->quote( $ip );
 
-  my $region = "";
-  my $regionq = $db->quote( $region );
-  my $country = "";
-  my $countryq = $db->quote( $country );
-
   my $usersq = $db->prepare( "SELECT * FROM users WHERE GUID = ${guidq}" );
   $usersq->execute;
 
@@ -659,7 +654,12 @@ sub updateUsers
   { }
   else
   {
-    $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${regionq}, ${countryq} )" );
+    my $gip = $gi->get_city_record_as_hash( $ip );
+    my $city = $db->quote( $$gip{ 'city' } );
+    my $region = $db->quote( $$gip{ 'region' } );
+    my $country = $db->quote( $$gip{ 'country_name' } );
+
+    $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, city, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${city}, ${region}, ${country} )" );
     $usersq->execute;
     $user = $usersq->fetchrow_hashref( );
   }
@@ -674,11 +674,11 @@ sub updateUsers
 
   if( !$adminLevel )
   {
-    $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq}, region=${regionq}, country=${countryq} WHERE userID=${userID}" );
+    $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
   }
   else
   {
-    $db->do( "UPDATE users SET useCount=useCount+1, seenTime=${timestamp}, ip=${ipq}, region=${regionq}, country=${countryq} WHERE userID=${userID}" );
+    $db->do( "UPDATE users SET useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
   }
 }
 
