@@ -70,7 +70,7 @@ for( my $i = 0; $i < 64; $i++ )
   push( @connectedUsers, {'connected' => CON_DISCONNECTED} );
 }
 
-my $servertsstr;
+my $servertsstr = "";
 my $servertsminoff;
 my $servertssecoff;
 
@@ -89,7 +89,7 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 my $startupBacklog = 0;
 
 open( FILE, "<",  $logpath ) or die "open logfile failed: ${logpath}";
-if( $sendMethod == SEND_PIPE )
+if( !$backlog && $sendMethod == SEND_PIPE )
 {
   die( "Could not open pipefile ${pipefilePath}. Is tremded running?" ) if( !-e $pipefilePath );
   open( SENDPIPE, ">", $pipefilePath );
@@ -296,7 +296,7 @@ while( 1 )
                   my $memo = $3;
                   my $memoq = $db->quote( $memo );
 
-                  $memoname =~ s/\"//g;
+                  $memoname =~ tr/\"//d;
                   my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
                   my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\')" );
@@ -608,7 +608,7 @@ sub sendconsole
   my( $string ) = @_;
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
-  $string =~ s/'//g;
+  $string =~ tr/'//d;
   my $outstring = "";
 
   if( $sendMethod == SEND_PIPE )
@@ -691,22 +691,27 @@ sub updateNames
   my $namec = $connectedUsers[ $slot ]{ 'nameColored' };
   my $namecq = $db->quote( $namec );
   my $userID = $connectedUsers[ $slot ]{ 'userID' };
+  my $nameID = "-1";
 
-  my $namesq = $db->prepare( "SELECT * FROM names WHERE name = ${nameq}" );
+  my $namesq = $db->prepare( "SELECT nameID FROM names WHERE name = ${nameq}" );
   $namesq->execute;
 
   my $namesref;
 
   if( my $ref = $namesq->fetchrow_hashref( ) )
-  { }
+  {
+    $nameID = $ref->{nameID};
+  }
   else
   {
     $db->do( "INSERT INTO names ( name, nameColored, userID, useCount, seenTime ) VALUES ( ${nameq}, ${namecq}, ${userID}, 0, ${timestamp} )" );
+    $nameID = $db->last_insert_id( undef, undef, "names", "nameID" );
   }
 
   return if( $startupBacklog );
+  $nameID ||= "-1";
 
-  $db->do( "UPDATE names SET usecount=useCount+1, seenTime=${timestamp}, userID=${userID} WHERE name = ${nameq}" );
+  $db->do( "UPDATE names SET usecount=useCount+1, seenTime=${timestamp}, userID=${userID} WHERE nameID = ${nameID}" );
 }
 
 sub memocheck
@@ -786,7 +791,7 @@ sub timestamp
   if( $backlog )
   {
     my $out = $servertsstr;
-    $out =~ s/\//-/g;
+    $out =~ tr/\//-/;
     return( $db->quote( $out ) );
   }
   my $q = $db->prepare( "SELECT DATETIME('now','localtime')" );
