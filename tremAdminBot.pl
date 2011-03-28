@@ -788,7 +788,7 @@ sub slotFromString
 
     $exact = $i if( lc( $uname ) eq $string );
 
-    push( @matches, $i ) if( $uname =~ /$string/ );
+    push( @matches, $i ) if( $uname =~ /$string/i );
   }
 
   my $n = scalar @matches;
