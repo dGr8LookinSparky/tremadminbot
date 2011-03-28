@@ -546,6 +546,32 @@ while( 1 )
               next;
             }
           }
+          elsif( $acmd eq "aliases" )
+          {
+            print( "Cmd: ${name} /aliases ${acmdargs}\n" );
+
+            my $err = "";
+            my $targslot = slotFromString( $acmdargs, 1, \$err );
+            if( $targslot < 0 )
+            {
+              replyToPlayer( $slot, "^3aliases:^7 ${err}" );
+              next;
+            }
+
+            my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
+            my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID}" );
+            $namesq->execute;
+
+            my @aliases;
+            while( my $ref = $namesq->fetchrow_hashref( ) )
+            {
+              push( @aliases, $ref->{ 'nameColored' } );
+            }
+            push( @aliases, $connectedUsers[ $targslot ]{ 'nameColored' } ) if( !scalar @aliases );
+            my $count = scalar @aliases;
+
+            replyToPlayer( $slot, "^3aliases:^7 ${count} names found: " . join( ", ", @aliases ) ) if( $count );
+          }
         }
         else
         {
