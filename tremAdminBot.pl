@@ -56,18 +56,39 @@ our $screenName = "tremded";
 do 'config.cfg';
 
 
-
 $SIG{INT} = \&cleanup;
 $SIG{__DIE__} = \&errorHandler;
 
 my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
-my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", {RaiseError => 1, AutoCommit => 1} ) or die "Database error: " . $DBI::errstr;
+my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die "Database error: " . $DBI::errstr;
+
+# create tables if they do not exist already
+{
+  my @tables;
+
+  @tables = $db->tables( undef, undef, "users", undef );
+  if( !scalar @tables )
+  {
+    $db->do( "CREATE TABLE users( userID INTEGER PRIMARY KEY, name TEXT, GUID TEXT, useCount INTEGER, seenTime DATETIME, IP TEXT, adminLevel INTEGER, city TEXT, region TEXT, country TEXT )" );
+    $db->do( "INSERT INTO users ( name, GUID, useCount, adminLevel ) VALUES ( \'console\', \'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\', 0, 999 )" );
+  }
+
+  @tables = $db->tables( undef, undef, "names", undef );
+  if( !scalar @tables )
+  {
+    $db->do( "CREATE TABLE names( nameID INTEGER PRIMARY KEY, name TEXT, nameColored TEXT, userID INTEGER, useCount INTEGER, seenTime DATETIME, FOREIGN KEY( userID ) REFERENCES users( userID ) )" );
+    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( \'console\', \'console\', 1, 0 )" );
+  }
+
+  @tables = $db->tables( undef, undef, "memos", undef );
+  $db->do( "CREATE TABLE memos( memoID INTEGER PRIMARY KEY, userID INTEGER, sentBy INTEGER, sentTime DATETIME, readTime DATETIME, msg TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( sentby ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+}
 
 # allocate
 my @connectedUsers;
 for( my $i = 0; $i < 64; $i++ )
 {
-  push( @connectedUsers, {'connected' => CON_DISCONNECTED} );
+  push( @connectedUsers, { 'connected' => CON_DISCONNECTED } );
 }
 
 my $servertsstr = "";
