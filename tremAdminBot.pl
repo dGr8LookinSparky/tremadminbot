@@ -23,6 +23,9 @@ our $logpath = "games.log";
 # Where do we store the database
 our $dbfile = "bot.db";
 
+# Where do we store the geoIP database
+our $gipdb = "/usr/local/share/GeoIP/GeoLiteCity.dat";
+
 # Are we reading from the whole logfile to populate the db? Generally this is 0
 our $backlog = 0;
 
@@ -52,14 +55,14 @@ our $pipefilePath = ".tremded_pipe";
 # name of screen session, only used for SEND_SCREEN
 our $screenName = "tremded";
 
-# CONFIG STUFF ENDS HERE
 do 'config.cfg';
+# ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
 
 $SIG{INT} = \&cleanup;
 $SIG{__DIE__} = \&errorHandler;
 
-my $gi = Geo::IP::PurePerl->open( "/usr/local/share/GeoIP/GeoLiteCity.dat", GEOIP_STANDARD );
+my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die "Database error: " . $DBI::errstr;
 
 # create tables if they do not exist already
