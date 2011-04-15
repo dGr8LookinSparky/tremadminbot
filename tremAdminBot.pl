@@ -3,6 +3,7 @@ use warnings;
 use DBI;
 use Data::Dumper;
 use Geo::IP::PurePerl;
+use Text::ParseWords;
 use Socket;
 use enum;
 use FileHandle;
@@ -11,6 +12,7 @@ use File::ReadBackwards;
 
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
+use enum qw( DEM_BAN DEM_MUTE DEM_DENYBUILD );
 
 # config: best to leave these defaults alone and set each var you want to override from default in config.cfg
 #         e.g. if you want to change $logpath, put a line that says
@@ -65,6 +67,9 @@ $SIG{__DIE__} = \&errorHandler;
 my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die "Database error: " . $DBI::errstr;
 
+# uncomment to dump all db activity to stdout
+#`$db->{TraceLevel} = 1;
+
 # create tables if they do not exist already
 {
   my @tables;
@@ -84,7 +89,16 @@ my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCo
   }
 
   @tables = $db->tables( undef, undef, "memos", undef );
-  $db->do( "CREATE TABLE memos( memoID INTEGER PRIMARY KEY, userID INTEGER, sentBy INTEGER, sentTime DATETIME, readTime DATETIME, msg TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( sentby ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+  if( !scalar @tables )
+  {
+    $db->do( "CREATE TABLE memos( memoID INTEGER PRIMARY KEY, userID INTEGER, sentBy INTEGER, sentTime DATETIME, readTime DATETIME, msg TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( sentby ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+  }
+
+  @tables = $db->tables( undef, undef, "demerits", undef );
+  if( !scalar @tables )
+  {
+    $db->do( "CREATE TABLE demerits( demeritID INTEGER PRIMARY KEY, userID INTEGER, demeritType INTEGER, admin INTEGER, reason TEXT, timeStamp DATETIME, duration INTEGER, IP TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( admin ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+  }
 }
 
 # allocate
@@ -589,6 +603,127 @@ while( 1 )
 
             replyToPlayer( $slot, "^3aliases:^7 ${count} names found: " . join( ", ", @aliases ) ) if( $count );
           }
+          elsif( $acmd eq "rapsheet" )
+          {
+            print( "Cmd: ${name} /rapsheet ${acmdargs}\n" );
+
+            my( $targ, $param ) = quotewords( '\s+', 0, $acmdargs );
+            if( $targ eq "" )
+            {
+              replyToPlayer( $slot, "^3rapsheet:^7 syntax: rapsheet <name|slot#|IP> [GUID|IP|SUBNET]" );
+              next;
+            }
+
+            my $err = "";
+            my $targslot = slotFromString( $targ, 1, \$err );
+            if( $targslot < 0 )
+            {
+              replyToPlayer( $slot, "^3rapsheet:^7 ${err}" );
+              next;
+            }
+
+            my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
+            my $targName = $connectedUsers[ $targslot ]{ 'nameColored' };
+            my $targIP = $connectedUsers[ $targslot ]{ 'IP' };
+
+            my $searchtype;
+            my $query;
+            if( lc( $param ) eq "ip" )
+            {
+              $searchtype = "IP";
+              my $targIPq = $db->quote( $targIP );
+              $query = "SELECT * FROM demerits WHERE IP = ${targIPq}";
+            }
+            elsif( lc( $param ) eq "subnet" )
+            {
+              $searchtype = "SUBNET";
+              if( my( $ip1, $ip2, $ip3, $ip4 ) = $targIP =~ /([\d]+)\.([\d]+)\.([\d]+)\.([\d]+)/ )
+              {
+                my $targSubq = $db->quote( "${ip1}.${ip2}.${ip3}.\%" );
+                $query = "SELECT * FROM demerits WHERE IP LIKE ${targSubq}";
+              }
+              else
+              {
+                replyToPlayer( $slot, "^3rapsheet:^7 player is not connected via ipv4." );
+              }
+            }
+            else
+            {
+              $searchtype = "GUID";
+              $query = "SELECT * FROM demerits WHERE userID = ${targUserID}";
+            }
+
+            my $bans = 0;
+            my $mutes = 0;
+            my $denybuilds = 0;
+
+            my $demq = $db->prepare( $query );
+            $demq->execute;
+
+            while( my $dem = $demq->fetchrow_hashref( ) )
+            {
+              if( $dem->{ 'demeritType' } == DEM_BAN )
+              {
+                $bans++;
+              }
+              elsif( $dem->{ 'demeritType' } == DEM_MUTE )
+              {
+                $mutes++;
+              }
+              elsif( $dem->{ 'demeritType' } == DEM_DENYBUILD )
+              {
+                $denybuilds++;
+              }
+            }
+
+            replyToPlayer( $slot, "^3rapsheet:^7 ${targName} offenses by ${searchtype}: Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
+          }
+          # --------- Stuff that we don't respond to, but track ---------
+          elsif( $acmd eq "ban" )
+          {
+            if( my( $duration, $targGUID, $targName, $reason, $targIP ) = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\": \[(.*)\]/ )
+            {
+              my $targUserID = userIDFromGUID( $targGUID );
+              if( $targUserID == -1 )
+              {
+                print( "Error: ban on unknown guid ${targGUID}\n" );
+                next;
+              }
+              my $targIPq = $db->quote( $targIP );
+              my $reasonq = $db->quote( $reason );
+              $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip, reason, duration) VALUES ( ${targUserID}, " . DEM_BAN . ", ${userID}, ${timestamp}, ${targIPq}, ${reasonq}, $duration )" );
+            }
+            else
+            {
+              print( "Parse failure on AdminExec ${line}\n" );
+            }
+          }
+          elsif( $acmd eq "mute" )
+          {
+            if( my( $targslot, $targGUID, $targName ) = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
+            {
+              my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
+              my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
+              $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip) VALUES ( ${targUserID}, " . DEM_MUTE . ", ${userID}, ${timestamp}, ${targIPq} )" );
+            }
+            else
+            {
+              print( "Parse failure on AdminExec ${line}\n" );
+            }
+          }
+          elsif( $acmd eq "denybuild" )
+          {
+            if( my( $targslot, $targGUID, $targName ) = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
+            {
+              my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
+              my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
+              $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip) VALUES ( ${targUserID}, " . DEM_DENYBUILD . ", ${userID}, ${timestamp}, ${targIPq} )" );
+            }
+            else
+            {
+              print( "Parse failure on AdminExec ${line}\n" );
+            }
+          }
         }
         else
         {
@@ -826,6 +961,25 @@ sub slotFromString
   {
     $$err = "No matches for ${string}";
     return( -1 );
+  }
+}
+
+sub userIDFromGUID
+{
+  my ( $guid ) = @_;
+  my $guidq = $db->quote( $guid );
+  my $usersq = $db->prepare( "SELECT userID FROM users WHERE GUID = ${guidq}" );
+  $usersq->execute;
+
+  my $user;
+
+  if( $user = $usersq->fetchrow_hashref( ) )
+  {
+    return $user->{'userID'};
+  }
+  else
+  {
+    return "-1";
   }
 }
 
