@@ -587,7 +587,7 @@ while( 1 )
 
           if( $acmdargs eq "" )
           {
-            replyToPlayer( $slot, "^3l1:^7 usage: l1 <name|slot#|IP>" );
+            replyToPlayer( $slot, "^3l1:^7 usage: l1 <name|slot#>" );
             next;
           }
 
@@ -616,7 +616,7 @@ while( 1 )
 
           if( $acmdargs eq "" )
           {
-            replyToPlayer( $slot, "^3aliases:^7 usage: aliases <name|slot#|IP>" );
+            replyToPlayer( $slot, "^3aliases:^7 usage: aliases <name|slot#>" );
             next;
           }
 
@@ -649,7 +649,7 @@ while( 1 )
           my( $targ, $param ) = quotewords( '\s+', 0, $acmdargs );
           if( $targ eq "" )
           {
-            replyToPlayer( $slot, "^3rapsheet:^7 usage: rapsheet <name|slot#|IP> [GUID|IP|SUBNET]" );
+            replyToPlayer( $slot, "^3rapsheet:^7 usage: rapsheet <name|slot#> [GUID|IP|SUBNET]" );
             next;
           }
 
