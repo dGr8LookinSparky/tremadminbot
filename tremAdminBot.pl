@@ -105,7 +105,7 @@ my $clientBeginRegExp = qr/^([\d-]+)/;
 my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
 my $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
-my $adminCmdRegExp = qr/^([\d-]+) \"(.*)\" \(\"(.*)\"\) \[([\d]+)\]: ([\w]+) (.*)/;
+my $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+): (.*)/;
 my $nameRegExpUnquoted= qr/.+/;
 my $nameRegExpQuoted = qr/\".+\"/;
 my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
@@ -254,26 +254,19 @@ while( 1 )
 
       next if( $startupBacklog );
 
-      if( $arg0 eq "AdminCmd" )
+      if( $arg0 eq "AdminExec" )
       {
-        if( my( $slot, $name, $aname, $alevel, $acmd, $acmdargs ) = $args =~ /$adminCmdRegExp/ )
+        if( my( $status, $slot, $name, $aname, $alevel, $guid, $acmd, $acmdargs ) = $args =~ /$adminExecRegExp/ )
         {
           my $nameq = $db->quote( $name );
           $acmd = lc($acmd);
-          my $guid;
 
-          if( $slot != -1 )
-          {
-            $guid = $connectedUsers[ $slot ]{ 'GUID' };
-          }
-          else
-          {
-            $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-          }
+          $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" if( $slot == -1 );
 
           my $userID = $connectedUsers[ $slot ]{ 'userID' };
 
-          #`print "admin command: slot ${slot} name ${name} aname ${aname} acmdargs ${acmd} acmdargs ${acmdargs}\n";
+          #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
+          next if( "${status}" ne "ok" );
 
           if( $acmd eq "seen" )
           {
