@@ -29,7 +29,7 @@ use File::ReadBackwards;
 
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
-use enum qw( DEM_BAN DEM_MUTE DEM_DENYBUILD );
+use enum qw( DEM_KICK DEM_BAN DEM_MUTE DEM_DENYBUILD );
 
 # config: best to leave these defaults alone and set each var you want to override from default in config.cfg
 #         e.g. if you want to change $logpath, put a line that says
@@ -693,6 +693,7 @@ while( 1 )
             $query = "SELECT * FROM demerits WHERE userID = ${targUserID}";
           }
 
+          my $kicks = 0;
           my $bans = 0;
           my $mutes = 0;
           my $denybuilds = 0;
@@ -702,7 +703,11 @@ while( 1 )
 
           while( my $dem = $demq->fetchrow_hashref( ) )
           {
-            if( $dem->{ 'demeritType' } == DEM_BAN )
+            if( $dem->{ 'demeritType' } == DEM_KICK )
+            {
+              $kicks++;
+            }
+            elsif( $dem->{ 'demeritType' } == DEM_BAN )
             {
               $bans++;
             }
@@ -716,9 +721,22 @@ while( 1 )
             }
           }
 
-          replyToPlayer( $slot, "^3rapsheet:^7 ${targName} offenses by ${searchtype}: Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
+          replyToPlayer( $slot, "^3rapsheet:^7 ${targName} offenses by ${searchtype}: Kicks: ${kicks} Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
         }
         # --------- Stuff that we don't respond to, but track ---------
+        elsif( $acmd eq "kick" )
+        {
+          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted) \"(.*)\"/ )
+          {
+            print( "Parse failure on AdminExec ${line}\n" );
+            next;
+          }
+          my( $targslot, $targGUID, $targName, $reason ) = @_;
+          my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
+          my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
+          my $reasonq = $db->quote( $reason );
+          $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip, reason) VALUES ( ${targUserID}, " . DEM_KICK . ", ${userID}, ${timestamp}, ${targIPq}, ${reasonq} )" );
+        }
         elsif( $acmd eq "ban" )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\": \[(.*)\]/ )
