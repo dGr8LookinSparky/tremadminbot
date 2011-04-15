@@ -1,3 +1,21 @@
+#    TremAdminBot: A bot that provides some helper functions for Tremulous server administration
+#    By Chris "Lakitu7" Schwarz, lakitu7@mercenariesguild.net
+#
+#    This file is part of TremAdminBot
+#
+#    TremAdminBot is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    TremAdminBot is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with TremAdminBot.  If not, see <http://www.gnu.org/licenses/>.
+
 use strict;
 use warnings;
 use DBI;
@@ -8,7 +26,6 @@ use Socket;
 use enum;
 use FileHandle;
 use File::ReadBackwards;
-
 
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
@@ -63,6 +80,12 @@ do 'config.cfg';
 
 $SIG{INT} = \&cleanup;
 $SIG{__DIE__} = \&errorHandler;
+
+print "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n";
+print "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@gmail.com)\n";
+print "This program comes with ABSOLUTELY NO WARRANTY.\n";
+print "This is free software, and you are welcome to redistribute it under certain conditions.\n";
+print "For details, see gpl.txt\n";
 
 my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die "Database error: " . $DBI::errstr;
