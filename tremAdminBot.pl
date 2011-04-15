@@ -286,6 +286,13 @@ while( 1 )
           {
             my $seenstring = $acmdargs;
             print( "Cmd: ${name} /seen ${seenstring}\n" );
+
+            if( $acmdargs eq "" )
+            {
+              replyToPlayer( $slot, "^3seen:^7 usage: seen <name>" );
+              next;
+            }
+
             $seenstring = lc( $seenstring );
             my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
             my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringq} ORDER BY useCount DESC" );
@@ -558,6 +565,12 @@ while( 1 )
           {
             print( "Cmd: ${name} /l1 ${acmdargs}\n" );
 
+            if( $acmdargs eq "" )
+            {
+              replyToPlayer( $slot, "^3l1:^7 usage: l1 <name|slot#|IP>" );
+              next;
+            }
+
             my $err = "";
             my $targslot = slotFromString( $acmdargs, 1, \$err );
             if( $targslot < 0 )
@@ -580,6 +593,12 @@ while( 1 )
           elsif( $acmd eq "aliases" )
           {
             print( "Cmd: ${name} /aliases ${acmdargs}\n" );
+
+            if( $acmdargs eq "" )
+            {
+              replyToPlayer( $slot, "^3aliases:^7 usage: aliases <name|slot#|IP>" );
+              next;
+            }
 
             my $err = "";
             my $targslot = slotFromString( $acmdargs, 1, \$err );
