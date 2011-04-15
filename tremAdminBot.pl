@@ -726,7 +726,7 @@ while( 1 )
         # --------- Stuff that we don't respond to, but track ---------
         elsif( $acmd eq "kick" )
         {
-          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted) \"(.*)\"/ )
+          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\"/ )
           {
             print( "Parse failure on AdminExec ${line}\n" );
             next;
