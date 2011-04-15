@@ -369,7 +369,7 @@ while( 1 )
                 }
                 else
                 {
-                  replyToPlayer( $slot, "^3memo:^7 syntax: memo send <name> <message>" );
+                  replyToPlayer( $slot, "^3memo:^7 usage: memo send <name> <message>" );
                 }
               }
               elsif( $memocmd eq "list" )
@@ -429,7 +429,7 @@ while( 1 )
                 }
                 else
                 {
-                  replyToPlayer( $slot, "^3memo:^7 syntax: memo read <memoID>" );
+                  replyToPlayer( $slot, "^3memo:^7 usage: memo read <memoID>" );
                 }
               }
               elsif( $memocmd eq "outbox" )
@@ -467,7 +467,7 @@ while( 1 )
                 }
                 else
                 {
-                  replyToPlayer( $slot, "^3memo:^7 syntax: memo unsend <memoID>" );
+                  replyToPlayer( $slot, "^3memo:^7 usage: memo unsend <memoID>" );
                 }
               }
               elsif( $memocmd eq "clear" )
@@ -488,12 +488,12 @@ while( 1 )
                   }
                   else
                   {
-                    replyToPlayer( $slot, "^3memo:^7 syntax: memo clear <ALL|READ>" );
+                    replyToPlayer( $slot, "^3memo:^7 usage: memo clear <ALL|READ>" );
                   }
                 }
                 else
                 {
-                  replyToPlayer( $slot, "^3memo:^7 syntax: memo clear <ALL|READ>" );
+                  replyToPlayer( $slot, "^3memo:^7 usage: memo clear <ALL|READ>" );
                 }
               }
               else
@@ -610,7 +610,7 @@ while( 1 )
             my( $targ, $param ) = quotewords( '\s+', 0, $acmdargs );
             if( $targ eq "" )
             {
-              replyToPlayer( $slot, "^3rapsheet:^7 syntax: rapsheet <name|slot#|IP> [GUID|IP|SUBNET]" );
+              replyToPlayer( $slot, "^3rapsheet:^7 usage: rapsheet <name|slot#|IP> [GUID|IP|SUBNET]" );
               next;
             }
 
