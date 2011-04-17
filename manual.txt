@@ -1,0 +1,160 @@
+TremAdminBot: A bot that provides some helper functions for Tremulous server 
+administration
+
+By Chris "Lakitu7" Schwarz, lakitu7@mercenariesguild.net
+http://projects.mercenariesguild.net/projects/tremadminbot
+
+This bot handles functions useful to tremulous admins that would not be 
+practical to do within game itself, such as asynchronous database and dns 
+lookups.
+
+It is written in perl and intended to run on the same server as the game 
+server, watching games.log, and acting/responding when appropriate.
+
+Check out the source with:
+git clone git://git.mercenariesguild.net/tremadminbot.git
+
+------ FEATURES ------
+* Keeps track of server users, the countries where they connect from, their
+  aliases (by GUID), and the history of admin actions against them
+* Stores info in an sqlite3 database, easily searchable by the server owner
+* Provides commands to admins that are either inappropriate or impossible
+  to implement within Tremulous itself
+
+------ COMMANDS ------
+* seen <name>
+  - Input a name or partial name of a user to find out when they last
+    connected, and the total number of times the name has been used.
+  - Aliases are not resolved. If a player connects as "name1" and then
+    connects as "name2" under the same guid, searching for "name1" will
+    only show the last time he used "name1"
+* memo <command> [arguments]
+  - Replicates an IRC-style memoserv to send memos to offline players.
+    Players with new memos are notified when they connect.
+  - memo list: lists your memos available
+  - memo read <memoID>: read a particular memo from another user
+  - memo send <username> <text>: send a memo to a user. Only users who have
+    connected (under the same guid, under any name) in the past 3 months can
+    be targetted.
+  - memo outbox: list memos you sent and whether or not they were receieved
+  - memo unsend <memoID>: undo sending a particular memo
+  - memo clear <ALL|READ>: clear all your memos, or all of your read memos
+* geoip <name|slot#|IP>
+  - Print the reverse DNS and city/region/country a user is connecting from
+  - User must be connected currently, or else you can specify an IP address
+    directly.
+* l1 <name|slot#>
+  - Set a user who is currently admin level 0 to admin level 1
+  - User must be currently connected
+* aliases <name|slot#>
+  - See the aliases of a user who is currently connected
+  - Aliases are resolved by GUID
+* rapsheet <name|slot#> [GUID|IP|SUBNET]
+  - Lists the numbers of kicks/bans/mutes/denybuilds on a player
+  - Specify how to search:
+    + GUID: actions against players with this GUID (default)
+    + IP: actions against players with this IP address. Because player IP
+      addresses can change, this may have actions from other physically nearby
+      people or not list all actions.
+    + SUBNET: actions against players with this subnet. Subnets are always /24
+      (xxx.xxx.xxx.*). See above note for IP mode.
+
+------ REQUIREMENTS ------
+* Own a tremulous gameserver where you can run this perl script 24/7 alongside it
+* Tremulous server should be running GPP, with the latest release. I do not
+  intend to write support for old logfile formats.
+* Some form of database engine. This was written for and tested on sqlite3
+* The following perl modules installed from CPAN:
+  - DBI
+  - Data::Dumper
+  - Geo::IP::PurePerl;
+  - Text::ParseWords;
+  - Socket
+  - enum
+  - FileHandle
+  - File::ReadBackwards;
+* GeoIP database files (http://geolite.maxmind.com/download/geoip/database/)
+* You have three choices for the bot to interact with the server, with
+  differing requirements:
+  - COM_PIPEFILE: Recommended and best option. LINUX ONLY. Requires tremded
+    binary be compiled with the feature. After this is merged from ioq3 trunk,
+    it will be in all updated tremded binaries, but for now you need to patch
+    it in and compile yourself:
+    http://lakitu.mercenariesguild.net/temp/com_pipefile2.patch
+  - RCON: Requires netcat be installed. This must be "bsd-style" netcat.
+  - SCREEN: This uses some hacks to send the commands to the screen session.
+    It works okay but it mostly sucks. If you have real people who attach to
+    the screen session and interact with the server that way, this will suck
+    bigtime as the two will interfere with each other.
+* Usage requirements for memory/cpu should be very minimal, except when you are
+  running in BACKLOG mode, one-time parsing old logfiles (optional).
+
+------ INSTALL ------
+* If you meet all the requirements above, download the script:
+  git clone git://git.mercenariesguild.net/tremadminbot.git
+* Trem server configuration:
+  - Set g_logfilesync 1
+  - If using com_pipefile communication, set com_pipefile
+    I recommend setting it to ".tremded_pipe" and then it will show up in
+    fs_homepath/fs_game/.tremded_pipe
+  - Add and configure the appropriate commands in admin.dat. See admin.dat
+    section below
+* Bot Configuration: Create a file named config.cfg. Add any variables to it
+  that you need to change from the default settings. Configuration variables
+  and their defaults are listed/documented at the beginning of the main source
+  file (tremAdminBot.pl)
+* Run it inside screen or whatever. Set the script executable. There are no
+  commandline parameters currently.
+* You may want to use the BACKLOG option (see configuration) to collect data
+  from appropripately-formatted logfiles from before you began to run the bot
+
+------ admin.dat ------
+* Add the following to your admin.dat to make tremded aware of the commands
+* Add the appropriate flags to various admins/levels to allow them to use them
+* If you do not want to use some command, remove its command entry.
+
+[command]
+command = seen
+exec = 
+desc = When was a user last seen? /seen <name>
+flag = seen
+
+[command]
+command = memo
+exec = 
+desc = Send and receive memos to players. /memo <command> [arguments]
+flag = memo
+
+[command]
+command = geoip
+exec = 
+desc = Look up a user's country etc. /geoip <name|slot#|IP>
+flag = geoip
+
+[command]
+command = l1
+exec = 
+desc = Set a level 0 user to level 1 /l1 <name|slot#>
+flag = l1
+
+[command]
+command = aliases
+exec = 
+desc = See a user's aliases. /aliases <name|slot#>
+flag = aliases
+
+[command]
+command = rapsheet
+exec = 
+desc = See a user's history of bans/mutes etc. /rapsheet <name|slot#> [GUID|IP|SUBNET]
+flag = rapsheet
+
+------ CONTACT ------
+Support for this project is limited: it assumes a high level of technical
+competence, and the requirements are such that few people will really be able
+to run it. If you do not understand most of what I am talking about, this is
+probably not for you, sorry.
+
+Please report all bugs, feature requests, and support requests to the project
+homepage/tracker:
+http://projects.mercenariesguild.net/projects/tremadminbot
