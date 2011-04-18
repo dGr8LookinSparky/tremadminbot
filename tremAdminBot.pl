@@ -370,7 +370,7 @@ while( 1 )
             $memoname =~ tr/\"//d;
             my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
-            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY useCount DESC limit 10" );
+            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY users.useCount DESC limit 10" );
             $q->execute;
 
             my @matches;
