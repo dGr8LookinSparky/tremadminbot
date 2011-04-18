@@ -143,7 +143,7 @@ my $clientBeginRegExp = qr/^([\d-]+)/;
 my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
 my $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
-my $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+): (.*)/;
+my $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
 my $nameRegExpUnquoted= qr/.+/;
 my $nameRegExpQuoted = qr/\".+\"/;
 my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
@@ -295,7 +295,10 @@ while( 1 )
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
         }
-        my( $status, $slot, $name, $aname, $alevel, $guid, $acmd, $acmdargs ) = @_;
+        my( $status, $slot, $name, $aname, $alevel, $guid, $acmd ) = @_;
+        my @toks = shellwords( $args );
+        my $acmdargs = "";
+        $acmdargs = join( " ", @toks[ 7 .. $#toks ] ) if( scalar @toks >= 7 );
 
         my $nameq = $db->quote( $name );
         $acmd = lc($acmd);
