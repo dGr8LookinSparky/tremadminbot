@@ -911,7 +911,17 @@ sub updateUsers
 
   if( !$adminLevel )
   {
-    $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
+    my $namesq = $db->prepare( "SELECT name FROM names WHERE userID = $userID ORDER BY useCount DESC LIMIT 1" );
+    $namesq->execute;
+    if( my $maxname = $namesq->fetchrow_hashref( ) )
+    {
+      my $maxnameq = $db->quote( $maxname->{ 'name' } );
+      $db->do( "UPDATE users SET name=${maxnameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
+    }
+    else
+    {
+      $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
+    }
   }
   else
   {
