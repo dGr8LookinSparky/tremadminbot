@@ -722,7 +722,7 @@ while( 1 )
             }
           }
 
-          replyToPlayer( $slot, "^3rapsheet:^7 ${targName} offenses by ${searchtype}: Kicks: ${kicks} Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
+          replyToPlayer( $slot, "^3rapsheet:^7 ${targName}^7 offenses by ${searchtype}: Kicks: ${kicks} Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
         }
         # --------- Stuff that we don't respond to, but track ---------
         elsif( $acmd eq "kick" )
@@ -1014,7 +1014,7 @@ sub slotFromString
   }
   else
   {
-    $$err = "No current players match string: ${string}";
+    $$err = "No current players match string: ${string}^7";
     return( -1 );
   }
 }
