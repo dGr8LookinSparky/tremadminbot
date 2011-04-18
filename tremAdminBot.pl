@@ -402,7 +402,7 @@ while( 1 )
             }
             elsif( scalar @matches > 1 )
             {
-              replyToPlayer( $slot, "^3memo:^7 multiple matches. Be more specific: " . join( ", ", @matches ) );
+              replyToPlayer( $slot, "^3memo:^7 multiple matches. Be more specific: " . join( "^3,^7 ", @matches ) );
             }
             else
             {
@@ -433,8 +433,8 @@ while( 1 )
             }
             my $newCount = scalar @memos;
             my $readCount = scalar @readMemos;
-            replyToPlayer( $slot, "^3memo:^7 You have ${newCount} new Memos: " . join( ", ", @memos ) . ". Use /memo read <memoID>" ) if( $newCount );
-            replyToPlayer( $slot, "^3memo:^7 You have ${readCount} read Memos: " . join( ", ", @readMemos ) ) if( $readCount );
+            replyToPlayer( $slot, "^3memo:^7 You have ${newCount} new Memos: " . join( "^3,^7 ", @memos ) . ". Use /memo read <memoID>" ) if( $newCount );
+            replyToPlayer( $slot, "^3memo:^7 You have ${readCount} read Memos: " . join( "^3,^7 ", @readMemos ) ) if( $readCount );
             replyToPlayer( $slot, "^3memo:^7 You have no memos." ) if( !$newCount && !$readCount );
           }
 
@@ -480,7 +480,7 @@ while( 1 )
 
               push( @memos, "ID: ${memoID} To: ${name}" );
             }
-            replyToPlayer( $slot, "^3memo:^7 Unread Sent Memos: " . join( ", ", @memos ) ) if( scalar @memos );
+            replyToPlayer( $slot, "^3memo:^7 Unread Sent Memos: " . join( "^3,^7 ", @memos ) ) if( scalar @memos );
             replyToPlayer( $slot, "^3memo:^7 You have no unread sent memos." ) if( ! scalar @memos );
           }
           elsif( $memocmd eq "unsend" )
@@ -643,7 +643,7 @@ while( 1 )
           push( @aliases, $connectedUsers[ $targslot ]{ 'nameColored' } ) if( !scalar @aliases );
           my $count = scalar @aliases;
 
-          replyToPlayer( $slot, "^3aliases:^7 ${count} names found: " . join( ", ", @aliases ) ) if( $count );
+          replyToPlayer( $slot, "^3aliases:^7 ${count} names found: " . join( "^3,^7 ", @aliases ) ) if( $count );
         }
         elsif( $acmd eq "rapsheet" )
         {
