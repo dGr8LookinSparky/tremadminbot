@@ -303,9 +303,12 @@ while( 1 )
         my $nameq = $db->quote( $name );
         $acmd = lc($acmd);
 
-        $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" if( $slot == -1 );
-
         my $userID = $connectedUsers[ $slot ]{ 'userID' };
+        if( $slot == -1 )
+        {
+          $userID = 1; # console is always userID 1
+          $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        }
 
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
