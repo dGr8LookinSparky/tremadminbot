@@ -974,7 +974,7 @@ sub memocheck
   my $ref = $q->fetchrow_hashref( );
   my $count = $ref->{ 'COUNT(1)' };
 
-  replyToPlayer( $slot, "You have ${count} new memos. Use /memo list to read." ) if $count > 0;
+  replyToPlayer( $slot, "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
 
 }
 
