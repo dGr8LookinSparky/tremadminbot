@@ -324,9 +324,8 @@ while( 1 )
           $q->execute;
 
           my $rescount = 0;
-          while( my $ref = $q->fetchrow_hashref( ) )
+          while( my $ref = $q->fetchrow_hashref( ) && $rescount < 3 )
           {
-            last if( $rescount > 3 );
             my $seenname = $ref->{'name'};
             my $seentime = $ref->{'seenTime'};
             my $seencount = $ref->{'useCount'};
