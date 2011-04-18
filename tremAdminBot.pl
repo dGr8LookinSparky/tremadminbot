@@ -301,7 +301,7 @@ while( 1 )
         $acmdargs = join( " ", @toks[ 7 .. $#toks ] ) if( scalar @toks >= 7 );
 
         my $nameq = $db->quote( $name );
-        $acmd = lc($acmd);
+        $acmd = lc( $acmd );
 
         my $userID = $connectedUsers[ $slot ]{ 'userID' };
         if( $slot == -1 )
