@@ -370,7 +370,7 @@ while( 1 )
             $memoname =~ tr/\"//d;
             my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
-            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\')" );
+            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY useCount DESC limit 10" );
             $q->execute;
 
             my @matches;
@@ -630,7 +630,7 @@ while( 1 )
           }
 
           my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
-          my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID}" );
+          my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID} ORDER BY useCount DESC LIMIT 20" );
           $namesq->execute;
 
           my @aliases;
@@ -841,6 +841,7 @@ sub sendconsole
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
   $string =~ tr/'//d;
+  $string = substr( $string, 0, 1024 );
   my $outstring = "";
 
   if( $sendMethod == SEND_PIPE )
