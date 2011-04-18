@@ -320,7 +320,7 @@ while( 1 )
 
           $seenstring = lc( $seenstring );
           my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
-          my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringq} ORDER BY useCount DESC" );
+          my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringq} ORDER BY useCount DESC LIMIT 5" );
           $q->execute;
 
           my $rescount = 0;
@@ -370,7 +370,7 @@ while( 1 )
             $memoname =~ tr/\"//d;
             my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
-            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY users.useCount DESC limit 10" );
+            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY users.useCount DESC LIMIT 10" );
             $q->execute;
 
             my @matches;
@@ -879,7 +879,7 @@ sub updateUsers
   my $ip = $connectedUsers[ $slot ]{ 'IP' };
   my $ipq = $db->quote( $ip );
 
-  my $usersq = $db->prepare( "SELECT * FROM users WHERE GUID = ${guidq}" );
+  my $usersq = $db->prepare( "SELECT * FROM users WHERE GUID = ${guidq} LIMIT 1" );
   $usersq->execute;
 
   my $user;
@@ -926,7 +926,7 @@ sub updateNames
   my $userID = $connectedUsers[ $slot ]{ 'userID' };
   my $nameID = "-1";
 
-  my $namesq = $db->prepare( "SELECT nameID FROM names WHERE name = ${nameq}" );
+  my $namesq = $db->prepare( "SELECT nameID FROM names WHERE name = ${nameq} LIMIT 1" );
   $namesq->execute;
 
   my $namesref;
@@ -1023,7 +1023,7 @@ sub userIDFromGUID
 {
   my ( $guid ) = @_;
   my $guidq = $db->quote( $guid );
-  my $usersq = $db->prepare( "SELECT userID FROM users WHERE GUID = ${guidq}" );
+  my $usersq = $db->prepare( "SELECT userID FROM users WHERE GUID = ${guidq} LIMIT 1" );
   $usersq->execute;
 
   my $user;
