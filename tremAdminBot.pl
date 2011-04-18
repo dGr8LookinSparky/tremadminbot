@@ -90,7 +90,7 @@ print( "For details, see gpl.txt\n" );
 print( "-------------------------------------------------------------------------------------------\n" );
 
 my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
-my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die( "Database error: " . $DBI::errstr );
+my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
 
 # uncomment to dump all db activity to stdout
 #`$db->{TraceLevel} = 1;
@@ -819,6 +819,12 @@ while( 1 )
     }
 
     $linesProcessed++;
+
+    # Committing periodically instead of using autocommit speeds the db up massively
+    if( $linesProcessed % 100 )
+    {
+      $db->commit( );
+    }
 
     if( $backlog && $linesProcessed % 1000 )
     {
