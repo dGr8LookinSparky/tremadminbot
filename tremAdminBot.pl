@@ -83,7 +83,7 @@ $SIG{INT} = \&cleanup;
 $SIG{__DIE__} = \&errorHandler;
 
 print "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n";
-print "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@gmail.com)\n";
+print "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@mercenariesguild.net)\n";
 print "This program comes with ABSOLUTELY NO WARRANTY.\n";
 print "This is free software, and you are welcome to redistribute it under certain conditions.\n";
 print "For details, see gpl.txt\n";
