@@ -324,13 +324,14 @@ while( 1 )
           $q->execute;
 
           my $rescount = 0;
-          while( my $ref = $q->fetchrow_hashref( ) && $rescount < 3 )
+          while( my $ref = $q->fetchrow_hashref( ) )
           {
             my $seenname = $ref->{'name'};
             my $seentime = $ref->{'seenTime'};
             my $seencount = $ref->{'useCount'};
             replyToPlayer( $slot, "^3seen:^7 Username ${seenname} seen ${seencount} times, last: ${seentime}" );
             ++$rescount;
+            last if( $rescount > 2 );
           }
 
           my $ref = $q->fetchrow_hashref( );
