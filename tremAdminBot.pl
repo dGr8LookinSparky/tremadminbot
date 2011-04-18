@@ -296,7 +296,7 @@ while( 1 )
           next;
         }
         my( $status, $slot, $name, $aname, $alevel, $guid, $acmd ) = @_;
-        my @toks = shellwords( $args );
+        my @toks = quotewords( '\s+', 1, $args );
         my $acmdargs = "";
         $acmdargs = join( " ", @toks[ 7 .. $#toks ] ) if( scalar @toks >= 7 );
 
@@ -737,7 +737,7 @@ while( 1 )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\"/ )
           {
-            print( "Parse failure on AdminExec ${line}\n" );
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
             next;
           }
           my( $targslot, $targGUID, $targName, $reason ) = @_;
@@ -750,7 +750,7 @@ while( 1 )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\": \[(.*)\]/ )
           {
-            print( "Parse failure on AdminExec ${line}\n" );
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
             next;
           }
           my( $duration, $targGUID, $targName, $reason, $targIP ) = @_;
@@ -770,7 +770,7 @@ while( 1 )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
           {
-            print( "Parse failure on AdminExec ${line}\n" );
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
             next;
           }
           my( $targslot, $targGUID, $targName ) = @_;
@@ -782,7 +782,7 @@ while( 1 )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
           {
-            print( "Parse failure on AdminExec ${line}\n" );
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
             next;
           }
           my( $targslot, $targGUID, $targName ) = @_;
