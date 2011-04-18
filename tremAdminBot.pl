@@ -358,14 +358,16 @@ while( 1 )
 
           if( $memocmd eq "send" )
           {
-            unless( $acmdargs =~ /^([\w]+) ($nameRegExp) (.*)/ )
+            my @split = shellwords( $acmdargs );
+            shift( @split );
+            unless( scalar @split >= 2 )
             {
               replyToPlayer( $slot, "^3memo:^7 usage: memo send <name> <message>" );
               next;
             }
 
-            my $memoname = lc( $2 );
-            my $memo = $3;
+            my $memoname = lc( shift( @split ) );
+            my $memo = join( " ", @split );
             my $memoq = $db->quote( $memo );
 
             $memoname =~ tr/\"//d;
@@ -650,7 +652,7 @@ while( 1 )
         {
           print( "Cmd: ${name} /rapsheet ${acmdargs}\n" );
 
-          my( $targ, $param ) = quotewords( '\s+', 0, $acmdargs );
+          my( $targ, $param ) = shellwords( $acmdargs );
           if( $targ eq "" )
           {
             replyToPlayer( $slot, "^3rapsheet:^7 usage: rapsheet <name|slot#> [GUID|IP|SUBNET]" );
