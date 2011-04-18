@@ -134,7 +134,7 @@ for( my $i = 0; $i < 64; $i++ )
 {
   push( @connectedUsers, { 'connected' => CON_DISCONNECTED } );
 }
-my $linesProcessed = 0;
+my $linesProcessed = -1;
 
 my $servertsstr = "";
 my $servertsminoff;
@@ -203,6 +203,19 @@ while( 1 )
     #`print "${line}\n";
 
     my $timestamp = timestamp( );
+
+    $linesProcessed++;
+
+    # Committing periodically instead of using autocommit speeds the db up massively
+    if( $linesProcessed % 100 )
+    {
+      $db->commit( );
+    }
+
+    if( $backlog && $linesProcessed % 1000 )
+    {
+      print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
+    }
 
     if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ /$lineRegExp/ )
     {
@@ -818,19 +831,6 @@ while( 1 )
           #`replyToPlayer( $slot, "Hi ${player}!" );
         #`}
       #`}
-    }
-
-    $linesProcessed++;
-
-    # Committing periodically instead of using autocommit speeds the db up massively
-    if( $linesProcessed % 100 )
-    {
-      $db->commit( );
-    }
-
-    if( $backlog && $linesProcessed % 1000 )
-    {
-      print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
     }
   }
   else
