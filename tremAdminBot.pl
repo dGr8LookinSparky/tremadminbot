@@ -82,14 +82,15 @@ do 'config.cfg';
 $SIG{INT} = \&cleanup;
 $SIG{__DIE__} = \&errorHandler;
 
-print "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n";
-print "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@mercenariesguild.net)\n";
-print "This program comes with ABSOLUTELY NO WARRANTY.\n";
-print "This is free software, and you are welcome to redistribute it under certain conditions.\n";
-print "For details, see gpl.txt\n";
+print( "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n" );
+print( "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@mercenariesguild.net)\n" );
+print( "This program comes with ABSOLUTELY NO WARRANTY.\n" );
+print( "This is free software, and you are welcome to redistribute it under certain conditions.\n" );
+print( "For details, see gpl.txt\n" );
+print( "-------------------------------------------------------------------------------------------\n" );
 
 my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
-my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die "Database error: " . $DBI::errstr;
+my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 1 } ) or die( "Database error: " . $DBI::errstr );
 
 # uncomment to dump all db activity to stdout
 #`$db->{TraceLevel} = 1;
@@ -131,6 +132,7 @@ for( my $i = 0; $i < 64; $i++ )
 {
   push( @connectedUsers, { 'connected' => CON_DISCONNECTED } );
 }
+my $linesProcessed = 0;
 
 my $servertsstr = "";
 my $servertsminoff;
@@ -150,7 +152,7 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
 
 my $startupBacklog = 0;
 
-open( FILE, "<",  $logpath ) or die "open logfile failed: ${logpath}";
+open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 if( !$backlog && $sendMethod == SEND_PIPE )
 {
   die( "Could not open pipefile ${pipefilePath}. Is tremded running?" ) if( !-e $pipefilePath );
@@ -179,12 +181,16 @@ if( !$backlog ) # Seek back to the start of the current game game
 
   if( $seekPos )
   {
-    seek( FILE, $seekPos, 0 ) or die "seek fail";
+    seek( FILE, $seekPos, 0 ) or die( "seek fail" );
   }
   else
   {
-    seek( FILE, 0, 2 ) or die "seek fail";  # need to use 2 instead of SEEK_END. No idea why.
+    seek( FILE, 0, 2 ) or die( "seek fail" );  # need to use 2 instead of SEEK_END. No idea why.
   }
+}
+else
+{
+  print( "Processing backlog on file ${logpath}. This will take a long time for large files.\n" );
 }
 
 while( 1 )
@@ -312,6 +318,9 @@ while( 1 )
 
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
+
+        next if( $backlog && ( $acmd eq "seen" || $acmd eq "memo" || $acmd eq "geoip" || $acmd eq "l1" || 
+                 $acmd eq "aliases" || $acmd eq "rapsheet" ) );
 
         if( $acmd eq "seen" )
         {
@@ -807,18 +816,26 @@ while( 1 )
         #`}
       #`}
     }
+
+    $linesProcessed++;
+
+    if( $backlog && $linesProcessed % 1000 )
+    {
+      print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
+    }
   }
   else
   {
     if( $backlog )
     {
-      print "End of backlog\n";
+      print "\nEnd of backlog\n";
       exit;
     }
 
     if( $startupBacklog )
     {
       $startupBacklog = 0;
+      print( "Finished startup routines. Watching logfile:\n" );
     }
 
     seek( FILE, 0, 1 );
@@ -857,7 +874,7 @@ sub sendconsole
 
   if( $sendMethod == SEND_PIPE )
   {
-    print( SENDPIPE "${string}\n" ) or die "Broken pipe!";
+    print( SENDPIPE "${string}\n" ) or die( "Broken pipe!" );
   }
   elsif( $sendMethod == SEND_RCON )
   {
