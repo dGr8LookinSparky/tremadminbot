@@ -319,8 +319,9 @@ while( 1 )
           }
 
           $seenstring = lc( $seenstring );
-          my $seenstringq = $db->quote( "\%" . $seenstring . "\%" );
-          my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringq} ORDER BY useCount DESC LIMIT 5" );
+          my $seenstringq = $db->quote( $seenstring );
+          my $seenstringlq = $db->quote( "\%" . $seenstring . "\%" );
+          my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringlq} ORDER BY CASE WHEN name = ${seenstringq} THEN 999999 else useCount END DESC LIMIT 4" );
           $q->execute;
 
           my $rescount = 0;
@@ -329,7 +330,7 @@ while( 1 )
             my $seenname = $ref->{'name'};
             my $seentime = $ref->{'seenTime'};
             my $seencount = $ref->{'useCount'};
-            replyToPlayer( $slot, "^3seen:^7 Username ${seenname} seen ${seencount} times, last: ${seentime}" );
+            replyToPlayer( $slot, "^3seen:^7 Player ${seenname} seen ${seencount} times, last: ${seentime}" );
             ++$rescount;
             last if( $rescount > 2 );
           }
@@ -341,7 +342,7 @@ while( 1 )
           }
           elsif( $rescount == 0 )
           {
-            replyToPlayer( $slot, "^3seen:^7 Username ${seenstring} not found" );
+            replyToPlayer( $slot, "^3seen:^7 Player ${seenstring} not found" );
           }
         }
         elsif( $acmd eq "memo" )
@@ -368,25 +369,26 @@ while( 1 )
             my $memoq = $db->quote( $memo );
 
             $memoname =~ tr/\"//d;
+            my $memonameq = $db->quote( $memoname );
             my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
 
-            my $q = $db->prepare( "SELECT users.userID, names.name, names.nameColored FROM users LEFT JOIN names ON names.userID = users.userID WHERE names.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY users.useCount DESC LIMIT 10" );
+            my $q = $db->prepare( "SELECT users.userID, users.name FROM users WHERE users.useCount > 10 AND users.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY CASE WHEN users.name = ${memonameq} then 999999 else users.useCount END DESC LIMIT 10" );
             $q->execute;
 
             my @matches;
             my $lastmatch;
-            my $exact = 0;
+            my $exact = -1;
             my $i = 0;
             while( my $ref = $q->fetchrow_hashref( ) )
             {
               $exact = $i if( $ref->{ 'name' } eq $memoname );
               $lastmatch = $ref->{ 'userID' };
-              push( @matches, $ref->{ 'nameColored' } );
-              last if( $exact );
+              push( @matches, $ref->{ 'name' } );
+              last if( $exact >= 0 );
               $i++;
             }
 
-            if( $exact )
+            if( $exact >= 0 )
             {
               my $memonameq = $db->quote( $memoname );
               $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES (${lastmatch}, ${userID}, ${timestamp}, ${memoq})" );
@@ -404,7 +406,7 @@ while( 1 )
             }
             else
             {
-              replyToPlayer( $slot, "^3memo:^7 invalid user: ${memoname} not seen in last 3 months." );
+              replyToPlayer( $slot, "^3memo:^7 invalid memo target: ${memoname} not seen in last 3 months or at least 10 times." );
             }
           }
           elsif( $memocmd eq "list" )
@@ -630,7 +632,7 @@ while( 1 )
           }
 
           my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
-          my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID} ORDER BY useCount DESC LIMIT 20" );
+          my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID} ORDER BY useCount DESC LIMIT 15" );
           $namesq->execute;
 
           my @aliases;
