@@ -675,7 +675,7 @@ while( 1 )
           {
             $searchtype = "IP";
             my $targIPq = $db->quote( $targIP );
-            $query = "SELECT * FROM demerits WHERE IP = ${targIPq}";
+            $query = "SELECT demeritType FROM demerits WHERE IP = ${targIPq}";
           }
           elsif( lc( $param ) eq "subnet" )
           {
@@ -683,7 +683,7 @@ while( 1 )
             if( my( $ip1, $ip2, $ip3, $ip4 ) = $targIP =~ /([\d]+)\.([\d]+)\.([\d]+)\.([\d]+)/ )
             {
               my $targSubq = $db->quote( "${ip1}.${ip2}.${ip3}.\%" );
-              $query = "SELECT * FROM demerits WHERE IP LIKE ${targSubq}";
+              $query = "SELECT demeritType FROM demerits WHERE IP LIKE ${targSubq}";
             }
             else
             {
@@ -694,7 +694,7 @@ while( 1 )
           else
           {
             $searchtype = "GUID";
-            $query = "SELECT * FROM demerits WHERE userID = ${targUserID}";
+            $query = "SELECT demeritType FROM demerits WHERE userID = ${targUserID}";
           }
 
           my $kicks = 0;
@@ -882,7 +882,7 @@ sub updateUsers
   my $ip = $connectedUsers[ $slot ]{ 'IP' };
   my $ipq = $db->quote( $ip );
 
-  my $usersq = $db->prepare( "SELECT * FROM users WHERE GUID = ${guidq} LIMIT 1" );
+  my $usersq = $db->prepare( "SELECT userID, adminLevel FROM users WHERE GUID = ${guidq} LIMIT 1" );
   $usersq->execute;
 
   my $user;
