@@ -116,37 +116,37 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
 [command]
 command = seen
 exec = 
-desc = When was a user last seen? /seen <name>
+desc = When was a user last seen?
 flag = seen
 
 [command]
 command = memo
 exec = 
-desc = Send and receive memos to players. /memo <command> [arguments]
+desc = Send and receive memos to players.
 flag = memo
 
 [command]
 command = geoip
 exec = 
-desc = Look up a user's country etc. /geoip <name|slot#|IP>
+desc = Look up a user's country etc.
 flag = geoip
 
 [command]
 command = l1
 exec = 
-desc = Set a level 0 user to level 1 /l1 <name|slot#>
+desc = Set a level 0 user to level 1
 flag = l1
 
 [command]
 command = aliases
 exec = 
-desc = See a user's aliases. /aliases <name|slot#>
+desc = See a user's aliases.
 flag = aliases
 
 [command]
 command = rapsheet
 exec = 
-desc = See a user's history of bans/mutes etc. /rapsheet <name|slot#> [GUID|IP|SUBNET]
+desc = See a user's history of bans/mutes etc.
 flag = rapsheet
 
 ------ CONTACT ------
