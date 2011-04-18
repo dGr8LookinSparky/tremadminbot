@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 #    TremAdminBot: A bot that provides some helper functions for Tremulous server administration
 #    By Chris "Lakitu7" Schwarz, lakitu7@mercenariesguild.net
 #
