@@ -303,6 +303,7 @@ while( 1 )
         }
         my( $status, $slot, $name, $aname, $alevel, $guid, $acmd ) = @_;
         my @toks = quotewords( '\s+', 1, $args );
+        @toks = grep( defined $_, @toks);
         my $acmdargs = "";
         $acmdargs = join( " ", @toks[ 7 .. $#toks ] ) if( scalar @toks >= 7 );
 
