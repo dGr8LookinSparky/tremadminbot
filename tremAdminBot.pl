@@ -1014,7 +1014,7 @@ sub slotFromString
   }
   else
   {
-    $$err = "No matches for ${string}";
+    $$err = "No current players match string: ${string}";
     return( -1 );
   }
 }
