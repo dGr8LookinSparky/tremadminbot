@@ -612,7 +612,7 @@ while( 1 )
           my $gipregion = $$gipinfo{ 'region' };
           my $gipiaddr = inet_aton( $gipip );
           my $giphostname = gethostbyaddr( $gipiaddr, AF_INET );
-          $gipiaddr ||= "";
+          $giphostname ||= "";
           $gipcountry ||= "";
           $gipcity ||= "";
           $gipregion ||= "";
