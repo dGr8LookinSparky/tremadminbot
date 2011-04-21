@@ -1036,8 +1036,8 @@ sub slotFromString
   my @matches;
   for( my $i = 0; $i < 64; $i++ )
   {
-    next unless( $connectedUsers[ $i ]{ 'name '} );
     my $uname = lc( $connectedUsers[ $i ]{ 'name' } );
+    next if( !$uname );
 
     next if( $requireConnected && $connectedUsers[ $i ]{ 'connected' } != CON_CONNECTED );
 
