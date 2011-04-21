@@ -1036,14 +1036,14 @@ sub slotFromString
   my @matches;
   for( my $i = 0; $i < 64; $i++ )
   {
-    my $uname = $connectedUsers[ $i ]{ 'name' };
-    next if( !$uname );
+    next unless( $connectedUsers[ $i ]{ 'name '} );
+    my $uname = lc( $connectedUsers[ $i ]{ 'name' } );
 
     next if( $requireConnected && $connectedUsers[ $i ]{ 'connected' } != CON_CONNECTED );
 
-    $exact = $i if( lc( $uname ) eq $string );
+    $exact = $i if( $uname eq $string );
 
-    push( @matches, $i ) if( $uname =~ /$string/i );
+    push( @matches, $i ) if( index( $uname, $string ) > -1 );
   }
 
   my $n = scalar @matches;
