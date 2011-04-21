@@ -151,7 +151,7 @@ my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
 my $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
 my $nameRegExpUnquoted= qr/.+/;
 my $nameRegExpQuoted = qr/\".+\"/;
-my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/;
+my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 
 my $startupBacklog = 0;
 
@@ -171,7 +171,7 @@ if( !$backlog ) # Seek back to the start of the current game game
 
   while( defined( my $line = $bw->readline( ) ) )
   {
-    if( $line =~ /$lineRegExp/ )
+    if( $line =~ $lineRegExp )
     {
       my $arg0 = $3;
       if( $arg0 eq "InitGame" )
@@ -218,11 +218,11 @@ while( 1 )
       print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
     }
 
-    if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ /$lineRegExp/ )
+    if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ $lineRegExp )
     {
       if( $arg0 eq "ClientConnect" )
       {
-        unless( @_ = $args =~ /$clientConnectRegExp/ )
+        unless( @_ = $args =~ $clientConnectRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -244,7 +244,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientDisconnect" )
       {
-        unless( $args =~ /$clientDisconnectRegExp/ )
+        unless( $args =~ $clientDisconnectRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -254,7 +254,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientBegin" )
       {
-        unless( $args =~ /$clientBeginRegExp/ )
+        unless( $args =~ $clientBeginRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -272,7 +272,7 @@ while( 1 )
       }
       elsif( $arg0 eq "AdminAuth" )
       {
-        unless( @_ = $args =~ /$adminAuthRegExp/ )
+        unless( @_ = $args =~ $adminAuthRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -290,7 +290,7 @@ while( 1 )
       }
       elsif( $arg0 eq "ClientRename" )
       {
-        unless( @_ = $args =~ /$clientRenameRegExp/ )
+        unless( @_ = $args =~ $clientRenameRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -312,7 +312,7 @@ while( 1 )
 
       if( $arg0 eq "AdminExec" )
       {
-        unless( @_ = $args =~ /$adminExecRegExp/ )
+        unless( @_ = $args =~ $adminExecRegExp )
         {
           print( "Parse failure on ${arg0} ${args}\n" );
           next;
@@ -823,7 +823,7 @@ while( 1 )
       # Unused at present but left here for if other people want to screw with it
       #`elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
       #`{
-        #`$args =~ /$sayRegExp/;
+        #`$args =~ $sayRegExp;
         #`my $slot = $1;
         #`my $player = $2;
         #`my $said = $3;
