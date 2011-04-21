@@ -27,6 +27,7 @@ use Socket;
 use enum;
 use FileHandle;
 use File::ReadBackwards;
+use Fcntl ':seek';
 
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
@@ -183,11 +184,11 @@ if( !$backlog ) # Seek back to the start of the current game game
 
   if( $seekPos )
   {
-    seek( FILE, $seekPos, 0 ) or die( "seek fail" );
+    seek( FILE, $seekPos, SEEK_SET ) or die( "seek fail" );
   }
   else
   {
-    seek( FILE, 0, 2 ) or die( "seek fail" );  # need to use 2 instead of SEEK_END. No idea why.
+    seek( FILE, 0, SEEK_END ) or die( "seek fail" );
   }
 }
 else
@@ -847,7 +848,7 @@ while( 1 )
       print( "Finished startup routines. Watching logfile:\n" );
     }
 
-    seek( FILE, 0, 1 );
+    seek( FILE, 0, SEEK_CUR );
     sleep 1;
   }
 }
