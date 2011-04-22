@@ -155,6 +155,28 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 
 my $startupBacklog = 0;
 
+my %cmds;
+sub loadcmds
+{
+  my $sub;
+  %cmds = ();
+  return unless( opendir( CMD, 'cmds' ) );
+  foreach my $cmd( readdir( CMD ) )
+  {
+    next unless( substr( $cmd, -4 ) eq 'cmd' );
+    $sub = do( $cmd );
+    unless( $sub )
+    {
+      warn( "$cmd: $@\n" );
+      next;
+    }
+    $cmds{ $cmd } = $sub;
+  }
+  closedir( CMD );
+}
+$SIG{ 'HUP' } = \&loadcmds;
+loadcmds;
+
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 if( !$backlog && $sendMethod == SEND_PIPE )
 {
@@ -337,10 +359,22 @@ while( 1 )
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
 
-        next if( $backlog && ( $acmd eq "seen" || $acmd eq "memo" || $acmd eq "geoip" || $acmd eq "l1" || 
+        next if( $backlog && ( exists( $cmds{ $acmd } ) || $acmd eq "seen" || $acmd eq "memo" || $acmd eq "geoip" || $acmd eq "l1" || 
                  $acmd eq "aliases" || $acmd eq "rapsheet" ) );
 
-        if( $acmd eq "seen" )
+        if( exists( $cmds{ $acmd } ) )
+        {
+          my %admin =
+          (
+            slot => $slot,
+            name => $name,
+            aname => $aname,
+            alevel => $alevel,
+            guid => $guid
+          );
+          $cmds{ $acmd }( \%admin, $acmdargs, $db );
+        }
+        elsif( $acmd eq "seen" )
         {
           my $seenstring = $acmdargs;
           print( "Cmd: ${name} /seen ${seenstring}\n" );
