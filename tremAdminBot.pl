@@ -158,7 +158,8 @@ my $startupBacklog = 0;
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 if( !$backlog && $sendMethod == SEND_PIPE )
 {
-  die( "Could not open pipefile ${pipefilePath}. Is tremded running?" ) if( !-e $pipefilePath );
+  die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
+    if( !-p( $pipefilePath ) );
   open( SENDPIPE, ">", $pipefilePath );
   SENDPIPE->autoflush( 1 );
 }
