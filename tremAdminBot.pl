@@ -180,7 +180,7 @@ sub loadcmds
     $sub = do( catfile( 'cmds', $_ ) );
     unless( $sub )
     {
-      warn( "$cmd: $!$@\n" );
+      warn( "$cmd: ", $@ || $!, "\n" );
       next;
     }
     $cmds{ $cmd } = $sub;
@@ -567,12 +567,12 @@ sub updateUsers
     my $city = '';
     my $region = '';
     my $country = '';
-    if( my $gip = main->can( 'get_city_record_as_hash' ) )
+    my $gip;
+    if( ( $gip = main->can( 'getrecord' ) ) && ( $gip = $gip->( $ip ) ) )
     {
-      $gip = $gip->( $ip );
-      $city = $db->quote( $$gip{ 'city' } );
-      $region = $db->quote( $$gip{ 'region' } );
-      $country = $db->quote( $$gip{ 'country_name' } );
+      $city = $db->quote( $gip->city );
+      $region = $db->quote( $gip->region );
+      $country = $db->quote( $gip->country_name );
     }
 
     $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, city, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${city}, ${region}, ${country} )" );
