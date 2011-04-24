@@ -88,25 +88,6 @@ print( "This is free software, and you are welcome to redistribute it under cert
 print( "For details, see gpl.txt\n" );
 print( "-------------------------------------------------------------------------------------------\n" );
 
-my $addr;
-if( !$backlog && $sendMethod == SEND_RCON )
-{
-  my $proto = getprotobyname( 'udp' );
-  foreach my $af( AF_INET6, AF_INET )
-  {
-    if( $addr = gethostbyname2( $ip, $af ) )
-    {
-      print "$ip resolved as " . inet_ntop( $af, $addr ), "\n";
-      $addr = $af eq AF_INET6 ?
-        pack_sockaddr_in6( $port, $addr ) :
-        pack_sockaddr_in( $port, $addr );
-      socket( RCON, $af, SOCK_DGRAM, $proto );
-      last;
-    }
-  }
-  die( "Can't resolve $ip\n" ) unless( $addr );
-}
-
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
 
 # uncomment to dump all db activity to stdout
@@ -211,12 +192,33 @@ $SIG{ 'HUP' } = \&loadcmds;
 loadcmds;
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
-if( !$backlog && $sendMethod == SEND_PIPE )
+my $addr;
+if( !$backlog )
 {
-  die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
-    if( !-p( $pipefilePath ) );
-  open( SENDPIPE, ">", $pipefilePath );
-  SENDPIPE->autoflush( 1 );
+  if( $sendMethod == SEND_PIPE )
+  {
+    die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
+      if( !-p( $pipefilePath ) );
+    open( SENDPIPE, ">", $pipefilePath );
+    SENDPIPE->autoflush( 1 );
+  }
+  elsif( $sendMethod == SEND_RCON )
+  {
+    my $proto = getprotobyname( 'udp' );
+    foreach my $af( AF_INET6, AF_INET )
+    {
+      if( $addr = gethostbyname2( $ip, $af ) )
+      {
+        print "$ip resolved as " . inet_ntop( $af, $addr ), "\n";
+        $addr = $af eq AF_INET6 ?
+          pack_sockaddr_in6( $port, $addr ) :
+          pack_sockaddr_in( $port, $addr );
+        socket( RCON, $af, SOCK_DGRAM, $proto );
+        last;
+      }
+    }
+    die( "Can't resolve $ip\n" ) unless( $addr );
+  }
 }
 
 if( !$backlog ) # Seek back to the start of the current game game
