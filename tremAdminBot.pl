@@ -219,10 +219,8 @@ if( !$backlog )
     }
     die( "Can't resolve $ip\n" ) unless( $addr );
   }
-}
 
-if( !$backlog ) # Seek back to the start of the current game game
-{
+  # Seek back to the start of the current game
   my $bw = File::ReadBackwards->new( $logpath );
   my $seekPos = 0;
   $startupBacklog = 1;
