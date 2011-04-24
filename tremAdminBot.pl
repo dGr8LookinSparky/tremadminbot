@@ -150,17 +150,17 @@ my $servertsstr = "";
 my $servertsminoff;
 my $servertssecoff;
 
-my $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
-my $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
-my $clientDisconnectRegExp = qr/^([\d]+)/;
-my $clientBeginRegExp = qr/^([\d-]+)/;
-my $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
-my $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
-my $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
-my $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
-my $nameRegExpUnquoted= qr/.+/;
-my $nameRegExpQuoted = qr/\".+\"/;
-my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
+our $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
+our $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
+our $clientDisconnectRegExp = qr/^([\d]+)/;
+our $clientBeginRegExp = qr/^([\d-]+)/;
+our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
+our $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
+our $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
+our $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
+our $nameRegExpUnquoted= qr/.+/;
+our $nameRegExpQuoted = qr/\".+\"/;
+our $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 
 my $startupBacklog = 0;
 
