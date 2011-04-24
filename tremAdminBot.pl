@@ -173,14 +173,15 @@ my $startupBacklog = 0;
 my %cmds;
 sub loadcmds
 {
-  my $sub;
+  my( $sub, $cmd );
   %cmds = ();
   return unless( opendir( CMD, 'cmds' ) );
   print 'Loading admin command handlers...';
-  foreach my $cmd( readdir( CMD ) )
+  foreach( readdir( CMD ) )
   {
-    next unless( substr( $cmd, -3 ) eq '.pl' );
-    $sub = do( catfile( 'cmds', $cmd ) );
+    next unless( /^(.+)\.pl$/i );
+    $cmd = lc( $1 );
+    $sub = do( catfile( 'cmds', $_ ) );
     unless( $sub )
     {
       warn( "$cmd: $!$@\n" );
