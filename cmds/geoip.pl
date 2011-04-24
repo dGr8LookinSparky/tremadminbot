@@ -1,8 +1,19 @@
 use common::sense;
 use Socket;
+use Geo::IP::PurePerl;
+
 our $nameRegExp;
 our @connectedUsers;
-our $gi;
+
+# Where do we store the geoIP database
+our $gipdb ||= "/usr/local/share/GeoIP/GeoLiteCity.dat";
+
+my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
+
+sub get_city_record_as_hash
+{
+  return $gi->get_city_record_as_hash( $_[0] );
+}
 
 sub
 {

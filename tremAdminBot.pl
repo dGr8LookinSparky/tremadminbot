@@ -21,9 +21,7 @@ use strict;
 use warnings;
 use DBI;
 use Data::Dumper;
-use Geo::IP::PurePerl;
 use Text::ParseWords;
-use Socket;
 use enum;
 use FileHandle;
 use File::ReadBackwards;
@@ -44,9 +42,6 @@ our $logpath = "games.log";
 
 # Where do we store the database
 our $dbfile = "bot.db";
-
-# Where do we store the geoIP database
-our $gipdb = "/usr/local/share/GeoIP/GeoLiteCity.dat";
 
 # Are we reading from the whole logfile to populate the db? Generally this is 0
 our $backlog = 0;
@@ -91,7 +86,6 @@ print( "This is free software, and you are welcome to redistribute it under cert
 print( "For details, see gpl.txt\n" );
 print( "-------------------------------------------------------------------------------------------\n" );
 
-my $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
 my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
 
 # uncomment to dump all db activity to stdout
@@ -549,10 +543,16 @@ sub updateUsers
   { }
   else
   {
-    my $gip = $gi->get_city_record_as_hash( $ip );
-    my $city = $db->quote( $$gip{ 'city' } );
-    my $region = $db->quote( $$gip{ 'region' } );
-    my $country = $db->quote( $$gip{ 'country_name' } );
+    my $city = '';
+    my $region = '';
+    my $country = '';
+    if( my $gip = main->can( 'get_city_record_as_hash' ) )
+    {
+      $gip = $gip->( $ip );
+      $city = $db->quote( $$gip{ 'city' } );
+      $region = $db->quote( $$gip{ 'region' } );
+      $country = $db->quote( $$gip{ 'country_name' } );
+    }
 
     $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, city, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${city}, ${region}, ${country} )" );
     $usersq->execute;
@@ -727,6 +727,7 @@ sub timestamp
 
 sub errorHandler
 {
+  return if( $^S ); # don't croak because of a failed eval
   print "Error: $_[ 0 ]";
   cleanup( );
 }
