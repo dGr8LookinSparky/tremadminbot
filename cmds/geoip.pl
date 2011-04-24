@@ -7,13 +7,16 @@ our @connectedUsers;
 
 my $GeoIP;
 
-foreach( qw/Geo::IP Geo::IP::PurePerl/ )
+BEGIN
 {
-  eval( "require $_;" );
-  unless( $@ )
+  foreach( qw/Geo::IP Geo::IP::PurePerl/ )
   {
-    $GeoIP = $_;
-    last;
+    eval( "use $_;" );
+    unless( $@ )
+    {
+      $GeoIP = $_;
+      last;
+    }
   }
 }
 die( "No compatible Geo::IP module found\n" ) unless( $GeoIP );
