@@ -181,7 +181,7 @@ my $adminargs = qr/("[^"]*"|\S+)/;
 #clientnum "currentname" "adminname" [adminlevel] (guid)
 #command
 #args
-my $adminexec = qr/^(-\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
+my $adminexec = qr/^(-?\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
 #number (guid) "name"
 my $admintarget = qr/^(-?\d+) \(([^\)]*)\)$/;
 ####
