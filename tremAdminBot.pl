@@ -154,14 +154,43 @@ $connectedUsers[ MAX_CLIENTS ] =
 my $linesProcessed = -1;
 
 my $servertsstr = "";
-my $servertsminoff;
-my $servertssecoff;
 
-our $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
+####
+# In general, colons (followed by a space or end of line) separate log parts
+# However, colons may be literals in a few cases which have to be special-cased
+# for regular expression-based parsing:
+#	IPv6 addresses contain colons (in brackets)
+#	Names can contain colons (in quotes)
+#	Datetimes contain colons (immediately following a digit)
+# Since the time part at the beginning of a line immediately precedes the log
+# type, but they are not separated by a colon, time must be removed before this
+# regex is used
+my $main = qr/((?>\[[^\]]*\]|"[^"]*"|\d+[ \/:]|[^:]+)(?1)?)(?:: |$)?/;
+#clientnum "currentname"
+#"adminname" [adminlevel] (guid)
+#flags
+my $adminauth_0 = qr/^(\d+) "([^"]*)"$/;
+my $adminauth_1 = qr/^"([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
+#clientnum "currentname" "adminname" [adminlevel] (guid)
+#flags
+my $adminauth = qr/^(\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
+#clientnum "currentname" ("adminname") [adminlevel]
+#command args
+my $admincmd = qr/^(-?\d+) "([^"]*)" \("([^"]*)"\) \[(-?\d+)\]$/;
+my $adminargs = qr/("[^"]*"|\S+)/;
+#ok|fail
+#clientnum "currentname" "adminname" [adminlevel] (guid)
+#command
+#args
+my $adminexec = qr/^(-\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
+#number (guid) "name"
+my $admintarget = qr/^(-?\d+) \(([^\)]*)\)$/;
+####
+
 our $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
 our $clientDisconnectRegExp = qr/^([\d]+)/;
 our $clientBeginRegExp = qr/^([\d-]+)/;
-our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\):/;
+our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\)/;
 our $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 our $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
 our $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
@@ -203,6 +232,21 @@ loadcmds;
 # this makes it much easier to send signals
 $0 = __FILE__;
 
+# returns time (in seconds), followed by log sections ([1] is type)
+use enum qw( LOG_TIME LOG_TYPE LOG_ARG ); # just for convenience
+sub splitLine( $ )
+{
+  my $line = $_[0];
+  return unless( $line =~ s/^ *(\d+):([0-5]\d) // );
+  return( $1 * 60 + $2, $line =~ /$main/go );
+}
+
+# "name" -> name, [address] -> address, (guid) -> guid
+sub unenclose( $ )
+{
+  return substr( $_[0], 1, length( $_[0] ) - 2 );
+}
+
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 my $addr;
 if( !$backlog )
@@ -238,10 +282,9 @@ if( !$backlog )
 
   while( defined( my $line = $bw->readline( ) ) )
   {
-    if( $line =~ $lineRegExp )
+    if( my @parts = splitLine( $line ) )
     {
-      my $arg0 = $3;
-      if( $arg0 eq "InitGame" )
+      if( $parts[ LOG_TYPE ] eq 'InitGame' )
       {
         $seekPos = $bw->tell( );
         last( );
@@ -285,152 +328,137 @@ while( 1 )
       print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
     }
 
-    if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ $lineRegExp )
+    if( my @args = splitLine( $line ) )
     {
-      if( $arg0 eq "ClientConnect" )
+      my( $slot, $ip, $guid, $name, $name2, $name3, $level );
+      if( $args[ LOG_TYPE ] eq "ClientConnect" )
       {
-        unless( @_ = $args =~ $clientConnectRegExp )
+        unless( ( $slot, $ip, $guid, $name, $name2 ) = $args[ LOG_ARG + 0 ] =~ $clientConnectRegExp )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my( $slot, $ip, $guid, $name, $nameColored ) = @_;
 
         $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTING;
         $connectedUsers[ $slot ]{ 'name' } = $name;
-        $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
-        $connectedUsers[ $slot ]{ 'IP' } = $ip;
-        $connectedUsers[ $slot ]{ 'GUID' } = $guid;
+        $connectedUsers[ $slot ]{ 'nameColored' } = $name2;
+        $connectedUsers[ $slot ]{ 'IP' } = unenclose( $ip ) || '127.0.0.1';
+        $connectedUsers[ $slot ]{ 'GUID' } = unenclose( $guid );
         $connectedUsers[ $slot ]{ 'aname' } = "";
-        $connectedUsers[ $slot ]{ 'alevel' } = "";
+        $connectedUsers[ $slot ]{ 'alevel' } = 0;
         $connectedUsers[ $slot ]{ 'slot' } = $slot;
-
-        $connectedUsers[ $slot ]{ 'IP' } ||= "127.0.0.1";
 
         updateUsers( $timestamp, $slot );
 
       }
-      elsif( $arg0 eq "ClientDisconnect" )
+      elsif( $args[ LOG_TYPE ] eq "ClientDisconnect" )
       {
-        unless( $args =~ $clientDisconnectRegExp )
+        unless( ( $slot ) = $args[ LOG_ARG + 0 ] =~ $clientDisconnectRegExp )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my $slot = $1;
         $connectedUsers[ $slot ]{ 'connected' } = CON_DISCONNECTED;
       }
-      elsif( $arg0 eq "ClientBegin" )
+      elsif( $args[ LOG_TYPE ] eq "ClientBegin" )
       {
-        unless( $args =~ $clientBeginRegExp )
+        unless( ( $slot ) = $args[ LOG_ARG + 0 ] =~ $clientBeginRegExp )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my $slot = $1;
-        my $name = $connectedUsers[ $slot ]{ 'name' };
         $connectedUsers[ $slot ]{ 'connected' } = CON_CONNECTED;
-
-        $connectedUsers[ $slot ]{ 'alevel' } ||= 0;
 
         next if( $startupBacklog );
 
         memocheck( $slot, $timestamp );
 
       }
-      elsif( $arg0 eq "AdminAuth" )
+      elsif( $args[ LOG_TYPE ] eq "AdminAuth" )
       {
-        unless( @_ = $args =~ $adminAuthRegExp )
+        unless( ( $slot, $name, $name2, $level, $guid ) = $args[ LOG_ARG + 0 ] =~ $adminAuthRegExp )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my( $slot, $name, $aname, $alevel, $guid ) = @_;
 
-        $connectedUsers[ $slot ]{ 'aname' } = $aname;
-        $connectedUsers[ $slot ]{ 'alevel' } = $alevel;
+        $connectedUsers[ $slot ]{ 'aname' } = $name2;
+        $connectedUsers[ $slot ]{ 'alevel' } = $level;
         $connectedUsers[ $slot ]{ 'GUID' } = $guid;
         my $userID = $connectedUsers[ $slot ]{ 'userID' };
 
-        my $anameq = $db->quote( $aname );
+        my $anameq = $db->quote( $name );
 
-        $db->do( "UPDATE users SET name=${anameq}, adminLevel=$alevel WHERE userID=${userID}" );
+        $db->do( "UPDATE users SET name=${anameq}, adminLevel=$level WHERE userID=${userID}" );
       }
-      elsif( $arg0 eq "ClientRename" )
+      elsif( $args[ LOG_TYPE ] eq "ClientRename" )
       {
-        unless( @_ = $args =~ $clientRenameRegExp )
+        unless( ( $slot, $ip, $guid, $name3, $name, $name2 ) = $args[ LOG_ARG + 0 ] =~ $clientRenameRegExp )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my( $slot, $ip, $guid, $previousName, $name, $nameColored ) = @_;
-        $connectedUsers[ $slot ]{ 'previousName' } = $previousName;
+        $connectedUsers[ $slot ]{ 'previousName' } = $name3;
         $connectedUsers[ $slot ]{ 'name' } = $name;
-        $connectedUsers[ $slot ]{ 'nameColored' } = $nameColored;
+        $connectedUsers[ $slot ]{ 'nameColored' } = $name2;
 
         updateNames( $timestamp, $slot );
       }
-      elsif( $arg0 eq "RealTime" )
+      elsif( $args[ LOG_TYPE ] eq "RealTime" )
       {
-        $servertsstr = $args;
+        $servertsstr = $args[ LOG_ARG + 0 ];
       }
 
       # Commands after this point are not interacted with in startupBacklog conditions
       next if( $startupBacklog );
 
-      if( $arg0 eq "AdminExec" )
+      if( $args[ LOG_TYPE ] eq "AdminExec" )
       {
-        unless( @_ = $args =~ $adminExecRegExp )
+        next if( $args[ LOG_ARG + 0 ] ne 'ok' );
+        unless( ( $slot, $name, $name2, $level, $guid ) = $args[ LOG_ARG + 1 ] =~ $adminexec )
         {
-          print( "Parse failure on ${arg0} ${args}\n" );
+          print( "Parse failure on @args\n" );
           next;
         }
-        my( $status, $slot, $name, $aname, $alevel, $guid, $acmd ) = @_;
-        my @toks = quotewords( '\s+', 1, $args );
-        @toks = grep( defined $_, @toks);
-        my $acmdargs = "";
-        $acmdargs = join( " ", @toks[ 7 .. $#toks ] ) if( scalar @toks >= 7 );
 
         my $nameq = $db->quote( $name );
-        $acmd = lc( $acmd );
+        my $acmd = lc( $args[ LOG_ARG + 2 ] );
+        my @acmdargs = @args[ LOG_ARG + 3 .. $#args ];
 
         my $userID = $connectedUsers[ $slot ]{ 'userID' };
-        if( $slot == -1 )
-        {
-          $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-        }
-
-        #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
-        next if( "${status}" ne "ok" );
+        # should only be blank for console
+        $guid ||= 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
         next if( $backlog && exists( $cmds{ $acmd } ) );
 
+        my( $targslot, $targGUID, $targName );
+
         if( exists( $cmds{ $acmd } ) )
         {
-          $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
+          @acmdargs = $acmdargs[ 0 ] =~ /$adminargs/go;
+          $cmds{ $acmd }( $connectedUsers[ $slot ], \@acmdargs, $timestamp, $db );
         }
         # --------- Stuff that we don't respond to, but track ---------
         elsif( $acmd eq "kick" )
         {
-          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\"/ )
+          unless( ( $targslot, $targGUID, $targName ) = $acmdargs[ 0 ] =~ $admintarget )
           {
-            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            print( "Parse failure on AdminExec @acmdargs\n" );
             next;
           }
-          my( $targslot, $targGUID, $targName, $reason ) = @_;
           my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
           my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
-          my $reasonq = $db->quote( $reason );
+          my $reasonq = $db->quote( $acmdargs[ 1 ] );
           $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip, reason) VALUES ( ${targUserID}, " . DEM_KICK . ", ${userID}, ${timestamp}, ${targIPq}, ${reasonq} )" );
         }
         elsif( $acmd eq "ban" )
         {
-          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\": \[(.*)\]/ )
+          my $duration;
+          unless( ( $duration, $targGUID, $targName ) = $acmdargs[ 0 ] =~ $admintarget )
           {
-            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            print( "Parse failure on AdminExec @acmdargs\n" );
             next;
           }
-          my( $duration, $targGUID, $targName, $reason, $targIP ) = @_;
 
           my $targUserID = userIDFromGUID( $targGUID );
           if( $targUserID == -1 )
@@ -439,30 +467,29 @@ while( 1 )
             next;
           }
 
-          my $targIPq = $db->quote( $targIP );
-          my $reasonq = $db->quote( $reason );
+          my $reasonq = $db->quote( $acmdargs[ 1 ] );
+          # there might be more than 1
+          my $targIPq = $db->quote( $acmdargs[ 2 ] );
           $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip, reason, duration) VALUES ( ${targUserID}, " . DEM_BAN . ", ${userID}, ${timestamp}, ${targIPq}, ${reasonq}, $duration )" );
         }
         elsif( $acmd eq "mute" )
         {
-          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
+          unless( ( $targslot, $targGUID, $targName ) = $acmdargs[ 0 ] =~ $admintarget )
           {
-            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            print( "Parse failure on AdminExec @acmdargs\n" );
             next;
           }
-          my( $targslot, $targGUID, $targName ) = @_;
           my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
           my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
           $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip) VALUES ( ${targUserID}, " . DEM_MUTE . ", ${userID}, ${timestamp}, ${targIPq} )" );
         }
         elsif( $acmd eq "denybuild" )
         {
-          unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted)/ )
+          unless( ( $targslot, $targGUID, $targName ) = $acmdargs[ 0 ] =~ $admintarget )
           {
-            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            print( "Parse failure on AdminExec @acmdargs\n" );
             next;
           }
-          my( $targslot, $targGUID, $targName ) = @_;
           my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
           my $targIPq = $db->quote( $connectedUsers[ $targslot ]{ 'IP' } );
           $db->do( "INSERT INTO demerits (userID, demeritType, admin, timeStamp, ip) VALUES ( ${targUserID}, " . DEM_DENYBUILD . ", ${userID}, ${timestamp}, ${targIPq} )" );

@@ -5,9 +5,9 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /rapsheet ${acmdargs}\n" );
+  print( "Cmd: $user->{name} /rapsheet @$acmdargs\n" );
 
-  my( $targ, $param ) = shellwords( $acmdargs );
+  my( $targ, $param ) = @$acmdargs;
   if( $targ eq "" )
   {
     replyToPlayer( $user, "^3rapsheet:^7 usage: rapsheet <name|slot#> [GUID|IP|SUBNET]" );

@@ -4,10 +4,10 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  my $seenstring = $acmdargs;
+  my $seenstring = $acmdargs->[ 0 ];
   print( "Cmd: $user->{name} /seen ${seenstring}\n" );
 
-  if( $acmdargs eq "" )
+  if( $seenstring eq "" )
   {
     replyToPlayer( $user, "^3seen:^7 usage: seen <name>" );
     return;

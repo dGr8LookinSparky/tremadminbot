@@ -4,27 +4,25 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  unless( $acmdargs =~ /^([\w]+)/ )
+  if( $acmdargs->[ 0 ] eq '' || $acmdargs->[ 0 ] =~ /\W/ )
   {
     replyToPlayer( $user, "^3memo:^7 commands: list, read, send, outbox, unsend, clear" );
     return;
   }
 
-  my $memocmd = lc( $1 );
-  print( "Cmd: $user->{name} /memo ${acmdargs}\n" );
+  my $memocmd = lc( $acmdargs->[ 0 ] );
+  print( "Cmd: $user->{name} /memo @$acmdargs\n" );
 
   if( $memocmd eq "send" )
   {
-    my @split = shellwords( $acmdargs );
-    shift( @split );
-    unless( scalar @split >= 2 )
+    unless( @$acmdargs > 2 )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo send <name> <message>" );
       return;
     }
 
-    my $memoname = lc( shift( @split ) );
-    my $memo = join( " ", @split );
+    my $memoname = lc( $acmdargs->[ 1 ] );
+    my $memo = join( " ", @$acmdargs[ 2 .. $#$acmdargs ] );
     my $memoq = $db->quote( $memo );
 
     $memoname =~ tr/\"//d;
@@ -100,7 +98,7 @@ sub
   elsif( $memocmd eq "read" )
   {
     my $memoID;
-    unless( ( $memoID ) = $acmdargs =~ /^(?:[\w]+) ([\d]+)/ )
+    unless( ( $memoID ) = $acmdargs->[ 1 ] =~ /^(\d+)$/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo read <memoID>" );
       return;
@@ -123,7 +121,7 @@ sub
     }
     else
     {
-      replyToPlayer( $user, "^3memo:^7: Invalid memoID: ${memoID}" );
+      replyToPlayer( $user, "^3memo:^7 Invalid memoID: ${memoID}" );
     }
   }
   elsif( $memocmd eq "outbox" )
@@ -145,7 +143,7 @@ sub
   elsif( $memocmd eq "unsend" )
   {
     my $memoID;
-    unless( ( $memoID ) = $acmdargs =~ /^(?:[\w]+) ([\d]+)/ )
+    unless( ( $memoID ) = $acmdargs->[ 1 ] =~ /^(\d+)$/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo unsend <memoID>" );
       return;
@@ -166,7 +164,7 @@ sub
   elsif( $memocmd eq "clear" )
   {
     my $clearcmd;
-    unless( ( $clearcmd ) = $acmdargs =~ /^(?:[\w]+) ([\w]+)/ )
+    unless( ( $clearcmd ) = $acmdargs->[ 1 ] =~ /^(\w+)$/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo clear <ALL|READ>" );
       return;

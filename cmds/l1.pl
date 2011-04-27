@@ -5,16 +5,16 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /l1 ${acmdargs}\n" );
+  print( "Cmd: $user->{name} /l1 @$acmdargs\n" );
 
-  if( $acmdargs eq "" )
+  if( $acmdargs->[ 0 ] eq "" )
   {
     replyToPlayer( $user, "^3l1:^7 usage: l1 <name|slot#>" );
     return;
   }
 
   my $err = "";
-  my $targslot = slotFromString( $acmdargs, 1, \$err );
+  my $targslot = slotFromString( $acmdargs->[ 0 ], 1, \$err );
   if( $targslot < 0 )
   {
     replyToPlayer( $user, "^3l1:^7 ${err}" );

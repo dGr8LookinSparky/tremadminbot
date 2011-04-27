@@ -37,13 +37,13 @@ sub
 
   my $gipip;
   my $gipname;
-  print( "Cmd: $user->{name} /geoip ${acmdargs}\n" );
+  print( "Cmd: $user->{name} /geoip @$acmdargs\n" );
 
-  if( $acmdargs =~ /^([\d]+\.[\d]+\.[\d]+\.[\d]+)/ )
+  if( $acmdargs->[ 0 ] =~ /^([\d]+\.[\d]+\.[\d]+\.[\d]+)/ )
   {
     $gipip = $gipname = $1;
   }
-  elsif( $acmdargs =~ /^($nameRegExp)/ )
+  elsif( $acmdargs->[ 0 ] =~ /^($nameRegExp)/ )
   {
     my $giptarg = $1;
     my $err = "";
