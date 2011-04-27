@@ -1,4 +1,5 @@
 use common::sense;
+our @connectedUsers;
 
 sub
 {
@@ -20,7 +21,7 @@ sub
     return;
   }
 
-  my $targUserID = $user->{ 'userID' };
+  my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
   my $namesq = $db->prepare( "SELECT nameColored FROM names WHERE userID = ${targUserID} ORDER BY useCount DESC LIMIT 15" );
   $namesq->execute;
 
