@@ -193,7 +193,11 @@ sub loadcmds
   closedir( CMD );
   print "done\n";
 }
-$SIG{ 'HUP' } = \&loadcmds;
+$SIG{ 'HUP' } = sub
+{
+	do( 'config.cfg' );
+	loadcmds;
+};
 loadcmds;
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
