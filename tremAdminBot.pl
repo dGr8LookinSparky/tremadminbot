@@ -70,8 +70,14 @@ our $port = "30720";
 #  path to communication pipe to write to, only used for SEND_PIPE
 our $pipefilePath = ".tremded_pipe";
 
+# path to screen binary, only used for SEND_SCREEN
+our $screenPath = 'screen';
+
 # name of screen session, only used for SEND_SCREEN
-our $screenName = "tremded";
+our $screenName = 'tremded';
+
+# name of screen window, only used for SEND_SCREEN
+our $screenWindow = '0';
 
 do 'config.cfg';
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
@@ -529,7 +535,11 @@ sub sendconsole
   }
   elsif( $sendMethod == SEND_SCREEN )
   {
-    `screen -S ${screenName} -p 0 -X stuff $\'\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10${string}\n\'`
+    my @cmd = ( $screenPath );
+    push( @cmd, '-S', $screenName ) if( $screenName ne '' );
+    push( @cmd, '-p', $screenWindow ) if( $screenWindow ne '' );
+    push( @cmd, qw/-q -X stuff/, "\b" x 30 . $string . "\n" );
+    warn( "screen returned $?\n" ) if( system( @cmd ) != 0 );
   }
   else
   {
