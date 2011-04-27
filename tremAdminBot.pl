@@ -201,7 +201,7 @@ $SIG{ 'HUP' } = sub
 loadcmds;
 
 # this makes it much easier to send signals
-$0 = __FILE__;
+($0 = __FILE__) =~ s/\.\w+$//;
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 my $addr;
