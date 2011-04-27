@@ -22,7 +22,6 @@ use DBI;
 use Socket;
 use Socket6;
 use Data::Dumper;
-use Text::ParseWords;
 use enum;
 use FileHandle;
 use File::ReadBackwards;
