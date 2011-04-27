@@ -17,8 +17,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with TremAdminBot.  If not, see <http://www.gnu.org/licenses/>.
 
-use strict;
-use warnings;
+use common::sense;
 use DBI;
 use Socket;
 use Socket6;
@@ -495,7 +494,7 @@ sub replyToPlayer
   my( $slot, $string ) = @_;
   $slot = $slot->{ 'slot' } if( ref( $slot ) );
 
-  if( $slot > 0 && $slot < MAX_CLIENTS )
+  if( $slot >= 0 && $slot < MAX_CLIENTS )
   {
     sendconsole( "pr ${slot} ${string}" );
   }
@@ -570,10 +569,13 @@ sub updateUsers
     my $gip;
     if( ( $gip = main->can( 'getrecord' ) ) && ( $gip = $gip->( $ip ) ) )
     {
-      $city = $db->quote( $gip->city );
-      $region = $db->quote( $gip->region );
-      $country = $db->quote( $gip->country_name );
+      $city = $gip->city;
+      $region = $gip->region;
+      $country = $gip->country_name;
     }
+    $city = $db->quote( $city );
+    $region = $db->quote( $region );
+    $country = $db->quote( $country );
 
     $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, city, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${city}, ${region}, ${country} )" );
     $usersq->execute;
