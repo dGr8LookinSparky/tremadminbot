@@ -2,7 +2,7 @@ use common::sense;
 
 sub
 {
-  my( $user, $acmdargs, $db ) = @_;
+  my( $user, $acmdargs, $timestamp, $db ) = @_;
 
   my $seenstring = $acmdargs;
   print( "Cmd: $user->{name} /seen ${seenstring}\n" );

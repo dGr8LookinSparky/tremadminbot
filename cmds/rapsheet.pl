@@ -3,7 +3,7 @@ our @connectedUsers;
 
 sub
 {
-  my( $user, $acmdargs, $db ) = @_;
+  my( $user, $acmdargs, $timestamp, $db ) = @_;
 
   print( "Cmd: $user->{name} /rapsheet ${acmdargs}\n" );
 
