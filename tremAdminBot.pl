@@ -211,8 +211,7 @@ if( !$backlog )
   {
     die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
       if( !-p( $pipefilePath ) );
-    open( SENDPIPE, ">", $pipefilePath );
-    SENDPIPE->autoflush( 1 );
+    sysopen( SENDPIPE, $pipefilePath, O_WRONLY );
   }
   elsif( $sendMethod == SEND_RCON )
   {
@@ -534,7 +533,7 @@ sub sendconsole
 
   if( $sendMethod == SEND_PIPE )
   {
-    print( SENDPIPE "${string}\n" ) or die( "Broken pipe!" );
+    syswrite( SENDPIPE, "${string}\n" ) or die( "Broken pipe!" );
   }
   elsif( $sendMethod == SEND_RCON )
   {
