@@ -9,7 +9,7 @@ sub
   if( $acmdargs eq "" )
   {
     replyToPlayer( $user, "^3aliases:^7 usage: aliases <name|slot#>" );
-    next;
+    return;
   }
 
   my $err = "";
@@ -17,7 +17,7 @@ sub
   if( $targslot < 0 )
   {
     replyToPlayer( $user, "^3aliases:^7 ${err}" );
-    next;
+    return;
   }
 
   my $targUserID = $user->{ 'userID' };

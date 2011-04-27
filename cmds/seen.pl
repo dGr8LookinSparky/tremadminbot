@@ -10,7 +10,7 @@ sub
   if( $acmdargs eq "" )
   {
     replyToPlayer( $user, "^3seen:^7 usage: seen <name>" );
-    next;
+    return;
   }
 
   $seenstring = lc( $seenstring );

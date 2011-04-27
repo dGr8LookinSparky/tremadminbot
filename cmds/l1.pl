@@ -10,7 +10,7 @@ sub
   if( $acmdargs eq "" )
   {
     replyToPlayer( $user, "^3l1:^7 usage: l1 <name|slot#>" );
-    next;
+    return;
   }
 
   my $err = "";
@@ -18,7 +18,7 @@ sub
   if( $targslot < 0 )
   {
     replyToPlayer( $user, "^3l1:^7 ${err}" );
-    next;
+    return;
   }
 
   if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
@@ -29,6 +29,6 @@ sub
   else
   {
     replyToPlayer( $user, "^3l1:^7 User #${targslot} is not level 0" );
-    next;
+    return;
   }
 };

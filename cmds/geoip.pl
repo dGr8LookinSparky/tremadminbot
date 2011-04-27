@@ -51,7 +51,7 @@ sub
     if( $gipslot < 0 )
     {
       replyToPlayer( $user, "^3geoip:^7 ${err}" );
-      next;
+      return;
     }
 
     if( $connectedUsers[ $gipslot ]{ 'IP' } )
@@ -62,13 +62,13 @@ sub
     else
     {
       replyToPlayer( $user, "^3geoip:^7 Unused slot #${giptarg}" );
-      next;
+      return;
     }
   }
   else
   {
     replyToPlayer( $user, "^3geoip:^7 usage: geoip <name|slot#|IP>" );
-    next;
+    return;
   }
   if( my $gipinfo = getrecord( $gipip ) )
   {

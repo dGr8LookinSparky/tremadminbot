@@ -11,7 +11,7 @@ sub
   if( $targ eq "" )
   {
     replyToPlayer( $user, "^3rapsheet:^7 usage: rapsheet <name|slot#> [GUID|IP|SUBNET]" );
-    next;
+    return;
   }
 
   my $err = "";
@@ -19,7 +19,7 @@ sub
   if( $targslot < 0 )
   {
     replyToPlayer( $user, "^3rapsheet:^7 ${err}" );
-    next;
+    return;
   }
 
   my $targUserID = $connectedUsers[ $targslot ]{ 'userID' };
@@ -45,7 +45,7 @@ sub
     else
     {
       replyToPlayer( $user, "^3rapsheet:^7 player is not connected via ipv4." );
-      next;
+      return;
     }
   }
   else

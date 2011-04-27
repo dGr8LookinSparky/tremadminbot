@@ -7,7 +7,7 @@ sub
   unless( $acmdargs =~ /^([\w]+)/ )
   {
     replyToPlayer( $user, "^3memo:^7 commands: list, read, send, outbox, unsend, clear" );
-    next;
+    return;
   }
 
   my $memocmd = lc( $1 );
@@ -20,7 +20,7 @@ sub
     unless( scalar @split >= 2 )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo send <name> <message>" );
-      next;
+      return;
     }
 
     my $memoname = lc( shift( @split ) );
@@ -103,7 +103,7 @@ sub
     unless( ( $memoID ) = $acmdargs =~ /^(?:[\w]+) ([\d]+)/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo read <memoID>" );
-      next;
+      return;
     }
     my $memoIDq = $db->quote( $memoID );
 
@@ -148,7 +148,7 @@ sub
     unless( ( $memoID ) = $acmdargs =~ /^(?:[\w]+) ([\d]+)/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo unsend <memoID>" );
-      next;
+      return;
     }
 
     my $memoIDq = $db->quote( $memoID );
@@ -169,7 +169,7 @@ sub
     unless( ( $clearcmd ) = $acmdargs =~ /^(?:[\w]+) ([\w]+)/ )
     {
       replyToPlayer( $user, "^3memo:^7 usage: memo clear <ALL|READ>" );
-      next;
+      return;
     }
     $clearcmd = lc( $clearcmd );
 
