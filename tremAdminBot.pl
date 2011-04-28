@@ -176,7 +176,7 @@ if( !$backlog )
       if( $addr = gethostbyname2( $ip, $af ) )
       {
         print "Server rcon ip $ip resolved as " . inet_ntop( $af, $addr ), "\n";
-        $addr = $af eq AF_INET6 ?
+        $addr = ( $af eq AF_INET6 ) ?
           pack_sockaddr_in6( $port, $addr ) :
           pack_sockaddr_in( $port, $addr );
         socket( RCON, $af, SOCK_DGRAM, $proto );
