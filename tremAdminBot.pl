@@ -70,13 +70,18 @@ our $port = "30720";
 our $pipefilePath = ".tremded_pipe";
 
 # path to screen binary, only used for SEND_SCREEN
-our $screenPath = 'screen';
+# leave default in most cases
+our $screenPath = "screen";
 
 # name of screen session, only used for SEND_SCREEN
-our $screenName = 'tremded';
+# if your server startup script looks something like 'screen -S tremded ..."
+# then 'tremded' is what you put here: i.e. whatever is after the -S
+our $screenName = "tremded";
 
 # name of screen window, only used for SEND_SCREEN
-our $screenWindow = '0';
+# the default '0' sends to whatever is in the first window in that screen
+# session
+our $screenWindow = "0";
 
 do 'config.cfg';
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
@@ -530,9 +535,10 @@ while( 1 )
 sub replyToPlayer
 {
   my( $slot, $string ) = @_;
+  tr/"//d;
   $slot = $slot->{ 'slot' } if( ref( $slot ) );
 
-  if( $slot >= 0 && $slot < MAX_CLIENTS )
+  if( $slot >= 0 )
   {
     sendconsole( "pr ${slot} \"${string}\"" );
   }
@@ -545,6 +551,7 @@ sub replyToPlayer
 sub printToPlayers
 {
   my( $string ) = @_;
+  tr/"//d;
   sendconsole( "pr -1 \"${string}\"" );
 }
 
@@ -553,7 +560,7 @@ sub sendconsole
   my( $string ) = @_;
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
-  $string =~ tr/[\13\15"]//d;
+  $string =~ tr/[\13\15]//d;
   $string = substr( $string, 0, 1024 );
   my $outstring = "";
 
