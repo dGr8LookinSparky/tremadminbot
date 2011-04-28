@@ -881,18 +881,18 @@ sub replyToPlayer
 
   if( $slot > 0 )
   {
-    sendconsole( "pr ${slot} ${string}" );
+    sendconsole( "pr ${slot} \"${string}\"" );
   }
   else
   {
-    sendconsole( "echo ${string}" );
+    sendconsole( "echo \"${string}\"" );
   }
 }
 
 sub printToPlayers
 {
   my( $string ) = @_;
-  sendconsole( "pr -1 ${string}" );
+  sendconsole( "pr -1 \"${string}\"" );
 }
 
 sub sendconsole
@@ -900,7 +900,7 @@ sub sendconsole
   my( $string ) = @_;
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
-  $string =~ tr/'//d;
+  $string =~ tr/[\13\15"]//d;
   $string = substr( $string, 0, 1024 );
   my $outstring = "";
 
