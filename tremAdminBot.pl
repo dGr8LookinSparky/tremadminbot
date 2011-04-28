@@ -50,7 +50,7 @@ our $backlog = 0;
 #  SEND_DISABLE: Do not send output responses back to the server.
 #  SEND_PIPE:    Write to a pipefile, as configured by the com_pipefile option. Best option if available.
 #                Fast and robust.
-#  SEND_RCON:    Use rcon. Requires netcat, ideally a freeBSD netcat.
+#  SEND_RCON:    Use rcon
 #                The only option that can get a response back from commands, but we don't use that anyway.
 #                Slow and shows up in log files as rcon usage.
 #  SEND_SCREEN:  Send a command to the screen session tremded is running in.

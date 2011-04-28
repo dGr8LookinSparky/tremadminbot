@@ -7,7 +7,7 @@ sub
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
   my $fortune;
-  unless( open( $fortune, '-|', $fortunePath ) )
+  unless( open( $fortune, '-|', $fortunePath, '-s' ) )
   {
     replyToPlayer( $user, '^3fortune:^7 fortune is not configured properly' );
     return;
