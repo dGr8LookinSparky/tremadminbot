@@ -879,7 +879,7 @@ sub replyToPlayer
 {
   my( $slot, $string ) = @_;
 
-  if( $slot > 0 )
+  if( $slot >= 0 )
   {
     sendconsole( "pr ${slot} \"${string}\"" );
   }
