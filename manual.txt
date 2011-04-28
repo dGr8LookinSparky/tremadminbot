@@ -70,6 +70,7 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
   - Geo::IP::PurePerl;
   - Text::ParseWords;
   - Socket
+  - Socket6
   - enum
   - FileHandle
   - File::ReadBackwards;
@@ -77,11 +78,11 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
 * You have three choices for the bot to interact with the server, with
   differing requirements:
   - COM_PIPEFILE: Recommended and best option. LINUX ONLY. Requires tremded
-    binary be compiled with the feature. After this is merged from ioq3 trunk,
-    it will be in all updated tremded binaries, but for now you need to patch
-    it in and compile yourself:
+    binary be compiled after r2208, or you otherwise apply the patch to an
+    earlier version:
     http://lakitu.mercenariesguild.net/temp/com_pipefile2.patch
-  - RCON: Requires netcat be installed. This must be "bsd-style" netcat.
+  - RCON: Rcon must be enabled on the server, and you must provide the address
+    and password. Usage appears in the server logs as regular rcon usage.
   - SCREEN: This uses some hacks to send the commands to the screen session.
     It works okay but it mostly sucks. If you have real people who attach to
     the screen session and interact with the server that way, this will suck

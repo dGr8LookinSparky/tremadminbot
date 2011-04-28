@@ -20,6 +20,8 @@
 use strict;
 use warnings;
 use DBI;
+use Socket;
+use Socket6;
 use Data::Dumper;
 use Geo::IP::PurePerl;
 use Text::ParseWords;
@@ -54,7 +56,7 @@ our $backlog = 0;
 #  SEND_DISABLE: Do not send output responses back to the server.
 #  SEND_PIPE:    Write to a pipefile, as configured by the com_pipefile option. Best option if available.
 #                Fast and robust.
-#  SEND_RCON:    Use rcon. Requires netcat, ideally a freeBSD netcat.
+#  SEND_RCON:    Use rcon
 #                The only option that can get a response back from commands, but we don't use that anyway.
 #                Slow and shows up in log files as rcon usage.
 #  SEND_SCREEN:  Send a command to the screen session tremded is running in.
@@ -156,16 +158,35 @@ my $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 my $startupBacklog = 0;
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
-if( !$backlog && $sendMethod == SEND_PIPE )
+my $addr;
+if( !$backlog )
 {
-  die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
-    if( !-p( $pipefilePath ) );
-  open( SENDPIPE, ">", $pipefilePath );
-  SENDPIPE->autoflush( 1 );
-}
+  if( $sendMethod == SEND_PIPE )
+  {
+    die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
+      if( !-p( $pipefilePath ) );
+    open( SENDPIPE, ">", $pipefilePath );
+    SENDPIPE->autoflush( 1 );
+  }
+  elsif( $sendMethod == SEND_RCON )
+  {
+    my $proto = getprotobyname( 'udp' );
+    foreach my $af( AF_INET6, AF_INET )
+    {
+      if( $addr = gethostbyname2( $ip, $af ) )
+      {
+        print "Server rcon ip $ip resolved as " . inet_ntop( $af, $addr ), "\n";
+        $addr = $af eq AF_INET6 ?
+          pack_sockaddr_in6( $port, $addr ) :
+          pack_sockaddr_in( $port, $addr );
+        socket( RCON, $af, SOCK_DGRAM, $proto );
+        last;
+      }
+    }
+    die( "Can't resolve $ip\n" ) unless( $addr );
+  }
 
-if( !$backlog ) # Seek back to the start of the current game game
-{
+  # Seek back to the start of the current game
   my $bw = File::ReadBackwards->new( $logpath );
   my $seekPos = 0;
   $startupBacklog = 1;
@@ -889,7 +910,7 @@ sub sendconsole
   }
   elsif( $sendMethod == SEND_RCON )
   {
-    $outstring = `echo -e \'\xff\xff\xff\xffrcon ${rcpass} ${string}\' | nc -w 0 -u ${ip} ${port}`;
+    send( RCON, "\xff\xff\xff\xffrcon $rcpass $string", 0, $addr );
   }
   elsif( $sendMethod == SEND_SCREEN )
   {
