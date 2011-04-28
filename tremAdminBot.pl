@@ -510,7 +510,7 @@ while( 1 )
 sub replyToPlayer
 {
   my( $slot, $string ) = @_;
-  tr/"//d;
+  $string =~ tr/"//d;
   $slot = $slot->{ 'slot' } if( ref( $slot ) );
 
   if( $slot >= 0 )
@@ -526,7 +526,7 @@ sub replyToPlayer
 sub printToPlayers
 {
   my( $string ) = @_;
-  tr/"//d;
+  $string =~ tr/"//d;
   sendconsole( "pr -1 \"${string}\"" );
 }
 
