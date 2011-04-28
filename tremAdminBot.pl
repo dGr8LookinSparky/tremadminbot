@@ -401,10 +401,6 @@ while( 1 )
         $acmd = lc( $acmd );
 
         my $userID = $connectedUsers[ $slot ]{ 'userID' };
-        if( $slot == -1 )
-        {
-          $guid = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-        }
 
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
