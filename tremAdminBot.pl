@@ -553,7 +553,7 @@ sub sendconsole
   my( $string ) = @_;
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
-  $string =~ tr/['\13\15]//d;
+  $string =~ tr/[\13\15"]//d;
   $string = substr( $string, 0, 1024 );
   my $outstring = "";
 
