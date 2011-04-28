@@ -889,6 +889,7 @@ while( 1 )
 sub replyToPlayer
 {
   my( $slot, $string ) = @_;
+  $string =~ tr/"//d;
 
   if( $slot >= 0 )
   {
@@ -903,6 +904,7 @@ sub replyToPlayer
 sub printToPlayers
 {
   my( $string ) = @_;
+  $string =~ tr/"//d;
   sendconsole( "pr -1 \"${string}\"" );
 }
 
@@ -911,7 +913,7 @@ sub sendconsole
   my( $string ) = @_;
   return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
 
-  $string =~ tr/[\13\15"]//d;
+  $string =~ tr/[\13\15]//d;
   $string = substr( $string, 0, 1024 );
   my $outstring = "";
 
