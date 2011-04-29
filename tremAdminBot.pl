@@ -259,7 +259,8 @@ if( !$backlog )
   {
     die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
       if( !-p( $pipefilePath ) );
-    sysopen( SENDPIPE, $pipefilePath, O_WRONLY );
+    open( SENDPIPE, ">", $pipefilePath );
+    SENDPIPE->autoflush( 1 );
   }
   elsif( $sendMethod == SEND_RCON )
   {
@@ -268,8 +269,8 @@ if( !$backlog )
     {
       if( $addr = gethostbyname2( $ip, $af ) )
       {
-        print "$ip resolved as " . inet_ntop( $af, $addr ), "\n";
-        $addr = $af eq AF_INET6 ?
+        print "Server rcon ip $ip resolved as " . inet_ntop( $af, $addr ), "\n";
+        $addr = ( $af eq AF_INET6 ) ?
           pack_sockaddr_in6( $port, $addr ) :
           pack_sockaddr_in( $port, $addr );
         socket( RCON, $af, SOCK_DGRAM, $proto );
@@ -535,7 +536,7 @@ while( 1 )
 sub replyToPlayer
 {
   my( $slot, $string ) = @_;
-  tr/"//d;
+  $string =~ tr/"//d;
   $slot = $slot->{ 'slot' } if( ref( $slot ) );
 
   if( $slot >= 0 )
@@ -551,7 +552,7 @@ sub replyToPlayer
 sub printToPlayers
 {
   my( $string ) = @_;
-  tr/"//d;
+  $string =~ tr/"//d;
   sendconsole( "pr -1 \"${string}\"" );
 }
 
@@ -566,7 +567,7 @@ sub sendconsole
 
   if( $sendMethod == SEND_PIPE )
   {
-    syswrite( SENDPIPE, "${string}\n" ) or die( "Broken pipe!" );
+    print( SENDPIPE "${string}\n" ) or die( "Broken pipe!" );
   }
   elsif( $sendMethod == SEND_RCON )
   {
