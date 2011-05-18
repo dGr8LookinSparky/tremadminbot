@@ -197,7 +197,6 @@ our $clientBeginRegExp = qr/^([\d-]+)/;
 our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\)/;
 our $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 our $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
-our $adminExecRegExp = qr/^([\w]+): ([\d-]+) \"(.*)\" \"(.*)\" \[([\d]+)\] \(([\w]*)\): ([\w]+):?/;
 our $nameRegExpUnquoted= qr/.+/;
 our $nameRegExpQuoted = qr/\".+\"/;
 our $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
