@@ -1,6 +1,5 @@
 use common::sense;
 use Socket;
-use Geo::IP::PurePerl;
 
 our @connectedUsers;
 
