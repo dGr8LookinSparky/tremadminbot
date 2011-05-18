@@ -2,7 +2,6 @@ use common::sense;
 use Socket;
 use Geo::IP::PurePerl;
 
-our $nameRegExp;
 our @connectedUsers;
 
 my $GeoIP;
@@ -43,9 +42,8 @@ sub
   {
     $gipip = $gipname = $1;
   }
-  elsif( $acmdargs->[ 0 ] =~ /^($nameRegExp)/ )
+  elsif( my $giptarg = unenclose( $acmdargs->[ 0 ] ) )
   {
-    my $giptarg = $1;
     my $err = "";
     my $gipslot = slotFromString( $giptarg, 0, \$err );
     if( $gipslot < 0 )

@@ -196,10 +196,6 @@ our $clientDisconnectRegExp = qr/^([\d]+)/;
 our $clientBeginRegExp = qr/^([\d-]+)/;
 our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\)/;
 our $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
-our $sayRegExp = qr/^([\d-]+) \"(.+)\": (.*)/;
-our $nameRegExpUnquoted= qr/.+/;
-our $nameRegExpQuoted = qr/\".+\"/;
-our $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 
 my $startupBacklog = 0;
 
@@ -247,7 +243,10 @@ sub splitLine( $ )
 # "name" -> name, [address] -> address, (guid) -> guid
 sub unenclose( $ )
 {
-  return substr( $_[0], 1, length( $_[0] ) - 2 );
+  my $fc = substr( $_[ 0 ], 0, 1 );
+  return $fc eq '"' || $fc eq '[' || $fc eq '(' ?
+    substr( $_[ 0 ], 1, length( $_[ 0 ] ) - 2 ) :
+    $_[ 0 ];
 }
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
@@ -500,12 +499,12 @@ while( 1 )
         }
       }
       # Unused at present but left here for if other people want to screw with it
-      #`elsif( $arg0 eq "Say" || $arg0 eq "SayTeam" || $arg0 eq "AdminMsg" )
+      #`elsif( $args[ LOG_TYPE ] eq "Say" || $args[ LOG_TYPE ] eq "SayTeam" || $args[ LOG_TYPE ] eq "AdminMsg" )
       #`{
-        #`$args =~ $sayRegExp;
+        #`$args[ LOG_ARGS + 0 ] =~ $adminauth_0;
         #`my $slot = $1;
         #`my $player = $2;
-        #`my $said = $3;
+        #`my $said = $args[ LOG_ARGS + 1 ];
         #`if( $said =~ /hi console/i )
         #`{
           #`replyToPlayer( $slot, "Hi ${player}!" );
