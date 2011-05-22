@@ -770,7 +770,7 @@ sub timestamp
 
 sub errorHandler
 {
-  return if( $^S ); # don't croak because of a failed eval
+  die( @_ ) if( $^S ); # don't croak because of a failed eval
   print "Error: $_[ 0 ]";
   cleanup( );
 }
