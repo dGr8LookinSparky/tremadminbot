@@ -7,18 +7,21 @@ sub
 
   print( "Cmd: $user->{name} /l1 ${acmdargs}\n" );
 
+  my $targslot;
+
   if( $acmdargs eq "" )
   {
-    replyToPlayer( $user, "^3l1:^7 usage: l1 <name|slot#>" );
-    return;
+    $targslot = $user->{ 'slot' };
   }
-
-  my $err = "";
-  my $targslot = slotFromString( $acmdargs, 1, \$err );
-  if( $targslot < 0 )
+  else
   {
-    replyToPlayer( $user, "^3l1:^7 ${err}" );
-    return;
+    my $err = "";
+    $targslot = slotFromString( $acmdargs, 1, \$err );
+    if( $targslot < 0 )
+    {
+      replyToPlayer( $user, "^3l1:^7 ${err}" );
+      return;
+    }
   }
 
   if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )

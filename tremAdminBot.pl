@@ -41,6 +41,9 @@ use enum qw( DEM_KICK DEM_BAN DEM_MUTE DEM_DENYBUILD );
 # Path to games.log
 our $logpath = "games.log";
 
+# Path to admin.dat
+our $adminpath = "admin.dat";
+
 # Where do we store the database
 our $dbfile = "bot.db";
 
@@ -208,6 +211,48 @@ loadcmds;
 # this makes it much easier to send signals
 $0 = __FILE__;
 
+# these are generally usable like clients
+our @admins;
+sub loadadmins
+{
+  unless( open( ADMIN, '<', $adminpath ) )
+  {
+    warn( "could not open $adminpath: $!\n" );
+    return;
+  }
+  @admins = ();
+  while( <ADMIN> )
+  {
+    next unless( /^\[admin]$/ );
+    my $admin = {};
+    while( <ADMIN> )
+    {
+      last unless( /\s*(\w+)\s+=\s+((?<=")[^"]*(?="?)|[^\n]+)/ );
+      $admin->{ lc( $1 ) } = $2;
+    }
+    if( exists( $admin->{ 'level' } ) && exists( $admin->{ 'name' } ) )
+    {
+      push( @admins, {
+        'connected' => CON_DISCONNECTED,
+        'name' => $admin->{ 'name' },
+        'nameColored' => $admin->{ 'name' },
+        'aname' => $admin->{ 'name' },
+        'alevel' => $admin->{ 'level' },
+        'guid' => $admin->{ 'guid' }
+      });
+      $admins[ -1 ]->{ 'name' } =~ s/\^[\da-z]//gi;
+    }
+    redo if( $_ ne '' );
+  }
+  close( ADMINS );
+
+  @admins = sort { $b->{ 'level' } <=> $a->{ 'level' } } @admins;
+  for( my $i = 0; $i < @admins; $i++ )
+  {
+    $admins[ $i ]{ 'slot' } = MAX_CLIENTS + $i;
+  }
+}
+
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 my $addr;
 if( !$backlog )
@@ -293,7 +338,11 @@ while( 1 )
 
     if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ $lineRegExp )
     {
-      if( $arg0 eq "ClientConnect" )
+      if( $arg0 eq "InitGame" )
+      {
+        loadadmins unless( $backlog );
+      }
+      elsif( $arg0 eq "ClientConnect" )
       {
         unless( @_ = $args =~ $clientConnectRegExp )
         {
@@ -412,6 +461,47 @@ while( 1 )
           $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
         }
         # --------- Stuff that we don't respond to, but track ---------
+        if( $acmd eq "readconfig" )
+        {
+          loadadmins unless( $backlog );
+        }
+        elsif( $acmd eq "setlevel" )
+        {
+          unless( @_ = $acmdargs =~ /^(-\d+) \((\w+)\) "($nameRegExpQuoted)"$/ )
+          {
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            next;
+          }
+          my( $level, $guid, $name ) = @_;
+          my $admin = getadmin( $guid );
+          if( $admin )
+          {
+            $admin->{ 'alevel' } = $level;
+            $admin->{ 'name' } = $name;
+            $admin->{ 'aname' } = $name;
+          }
+          else
+          {
+            my $target = getuser( $guid );
+            unless( $target )
+            {
+              print "setlevel with invalid target (this should never happen)\n";
+              next;
+            }
+            $admin = {
+              'connected' => CON_DISCONNECTED,
+              'name' => $name,
+              'nameColored' => $target->{ 'nameColored' },
+              'aname' => $name,
+              'alevel' => $level,
+              'guid' => $guid,
+              'slot' => @admins
+            };
+            $target->{ 'alevel' } = $level;
+            $target->{ 'aname' } = $name;
+            push( @admins, $admin );
+          }
+        }
         elsif( $acmd eq "kick" )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\"/ )
@@ -675,6 +765,75 @@ sub memocheck
 
   replyToPlayer( $slot, "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
 
+}
+
+sub getadmin
+{
+  my $guid = lc( $_[ 0 ] );
+  foreach( @admins )
+  {
+    return $_ if( lc( $_->{ 'guid' } ) eq $guid );
+  }
+  return;
+}
+
+sub cleanstring
+{
+  ( my $str = lc( $_[ 0 ] ) ) =~ s/[^\da-z]//gi;
+  return $str;
+}
+
+sub findadmin
+{
+  my( $string, $err ) = @_;
+
+  if( $string =~ /^\d+$/ )
+  {
+    if( $string < MAX_CLIENTS )
+    {
+      return $connectedUsers[ $string ]
+        if( $connectedUsers[ $string ]{ 'connected' } != CON_DISCONNECTED );
+      $$err = "no player connected in slot $string";
+    }
+
+    return $admins[ $string - MAX_CLIENTS ]
+      if( $string - MAX_CLIENTS < @admins );
+
+    $$err = "$string not in range 1-" . ( $#admins + MAX_CLIENTS );
+    return;
+  }
+
+  $string = cleanstring( $string );
+  my( $cmp, $match );
+  foreach( @admins, @connectedUsers )
+  {
+    $cmp = cleanstring( $_->{ 'name' } );
+    # names should be unique, so return on exact match
+    return $_ if( $string eq $cmp );
+    if( index( $cmp, $string ) > -1 )
+    {
+      if( $match )
+      {
+        $$err = "more than one match.  use the listplayers or listadmins to " .
+          "find an appropriate number to use instead of name.";
+        return;
+      }
+      $match = $_;
+    }
+  }
+  $$err = "no match.  use listplayers or listadmins to " .
+    "find an appropriate number to use instead of name." unless( $match );
+  return $match;
+}
+
+sub getuser
+{
+  my $guid = lc( $_[ 0 ] );
+  foreach( @connectedUsers )
+  {
+    return $_ if( lc( $_->{ 'guid' } ) eq $guid );
+  }
+  return;
 }
 
 sub slotFromString
