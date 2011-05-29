@@ -238,7 +238,7 @@ sub loadadmins
         'nameColored' => $admin->{ 'name' },
         'aname' => $admin->{ 'name' },
         'alevel' => $admin->{ 'level' },
-        'guid' => $admin->{ 'guid' }
+        'GUID' => $admin->{ 'guid' }
       });
       $admins[ -1 ]->{ 'name' } =~ s/\^[\da-z]//gi;
     }
@@ -496,7 +496,7 @@ while( 1 )
               'nameColored' => $target->{ 'nameColored' },
               'aname' => $name,
               'alevel' => $level,
-              'guid' => $guid,
+              'GUID' => $guid,
               'slot' => @admins
             };
             $target->{ 'alevel' } = $level;
@@ -774,7 +774,7 @@ sub getadmin
   my $guid = lc( $_[ 0 ] );
   foreach( @admins )
   {
-    return $_ if( lc( $_->{ 'guid' } ) eq $guid );
+    return $_ if( lc( $_->{ 'GUID' } ) eq $guid );
   }
   return;
 }
@@ -833,7 +833,7 @@ sub getuser
   my $guid = lc( $_[ 0 ] );
   foreach( @connectedUsers )
   {
-    return $_ if( lc( $_->{ 'guid' } ) eq $guid );
+    return $_ if( lc( $_->{ 'GUID' } ) eq $guid );
   }
   return;
 }
