@@ -9,9 +9,14 @@ sub
 
   my $targslot;
 
-  if( $acmdargs eq "" || $user->{ 'alevel' } == 0 )
+  if( $user->{ 'alevel' } == 0 )
   {
     $targslot = $user->{ 'slot' };
+  }
+  elsif( $acmdargs eq "" )
+  {
+    replyToPlayer( $user, "^3l1:^7 usage: l1 <name|slot#>" );
+    return;
   }
   else
   {
