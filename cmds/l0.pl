@@ -8,7 +8,7 @@ sub
 
   my$targ ;
 
-  if( $acmdargs eq "" )
+  if( $acmdargs eq "" || $user->{ 'alevel' } == 1 )
   {
     $targ = $user;
   }

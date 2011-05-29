@@ -467,12 +467,14 @@ while( 1 )
         }
         elsif( $acmd eq "setlevel" )
         {
-          unless( @_ = $acmdargs =~ /^(-\d+) \((\w+)\) "($nameRegExpQuoted)"$/ )
+          unless( @_ = $acmdargs =~ /^(-?\d+) \((\w+)\) ($nameRegExpQuoted)/ )
           {
             print( "Parse failure on AdminExec ${acmdargs}\n" );
             next;
           }
           my( $level, $guid, $name ) = @_;
+          # remove the "s
+          $name = substr( $name, 1, length( $name ) - 2 );
           my $admin = getadmin( $guid );
           if( $admin )
           {

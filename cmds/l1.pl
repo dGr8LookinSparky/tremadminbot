@@ -9,7 +9,7 @@ sub
 
   my $targslot;
 
-  if( $acmdargs eq "" )
+  if( $acmdargs eq "" || $user->{ 'alevel' } == 0 )
   {
     $targslot = $user->{ 'slot' };
   }
