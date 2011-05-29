@@ -461,7 +461,7 @@ while( 1 )
           $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
         }
         # --------- Stuff that we don't respond to, but track ---------
-        if( $acmd eq "readconfig" )
+        elsif( $acmd eq "readconfig" )
         {
           loadadmins unless( $backlog );
         }
