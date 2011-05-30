@@ -17,6 +17,7 @@ sub
   {
     chomp;
     s/"/''/g;
+    s/\t/    /g;
     replyToPlayer( $user, "^3fortune:^7 $_" );
   }
 

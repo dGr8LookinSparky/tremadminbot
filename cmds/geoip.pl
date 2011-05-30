@@ -1,3 +1,20 @@
+#    TremAdminBot: A bot that provides some helper functions for Tremulous server administration
+#    By Chris "Lakitu7" Schwarz, lakitu7@mercenariesguild.net
+#
+#    This file is part of TremAdminBot
+#
+#    TremAdminBot is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    TremAdminBot is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with TremAdminBot.  If not, see <http://www.gnu.org/licenses/>.
 use common::sense;
 use Socket;
 
