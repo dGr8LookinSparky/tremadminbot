@@ -497,7 +497,7 @@ while( 1 )
               'aname' => $name,
               'alevel' => $level,
               'GUID' => $guid,
-              'slot' => @admins
+              'slot' => MAX_CLIENTS + @admins
             };
             $target->{ 'alevel' } = $level;
             $target->{ 'aname' } = $name;
