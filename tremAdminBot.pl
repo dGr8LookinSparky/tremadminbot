@@ -932,7 +932,8 @@ sub timestamp
 
 sub errorHandler
 {
-  die( @_ ) if( $^S ); # don't croak because of a failed eval
+  # don't croak because of an error in a command handler or failed eval
+  die( @_ ) if( $^S || !defined( $^S ) );
   print "Error: $_[ 0 ]";
   cleanup( );
 }
