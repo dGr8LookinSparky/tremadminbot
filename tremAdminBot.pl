@@ -185,7 +185,7 @@ sub loadcmds
   my( $sub, $cmd );
   %cmds = ();
   return unless( opendir( CMD, 'cmds' ) );
-  print 'Loading admin command handlers...';
+  print "Loading admin command handlers...\n";
   foreach( readdir( CMD ) )
   {
     next unless( /^(.+)\.pl$/i );
@@ -197,14 +197,15 @@ sub loadcmds
       next;
     }
     $cmds{ $cmd } = $sub;
+    print " Loaded: ${cmd}\n";
   }
   closedir( CMD );
   print "done\n";
 }
 $SIG{ 'HUP' } = sub
 {
-	do( 'config.cfg' );
-	loadcmds;
+  do( 'config.cfg' );
+  loadcmds;
 };
 loadcmds;
 
@@ -597,13 +598,13 @@ while( 1 )
 
 sub replyToPlayer
 {
-  my( $slot, $string ) = @_;
+  my( $userSlot, $string ) = @_;
   $string =~ tr/"//d;
-  $slot = $slot->{ 'slot' } if( ref( $slot ) );
+  $userSlot = $userSlot->{ 'slot' } if( ref( $userSlot ) );
 
-  if( $slot >= 0 )
+  if( $userSlot >= 0 )
   {
-    sendconsole( "pr ${slot} \"${string}\"" );
+    sendconsole( "pr ${userSlot} \"${string}\"" );
   }
   else
   {
@@ -765,7 +766,7 @@ sub memocheck
   my $ref = $q->fetchrow_hashref( );
   my $count = $ref->{ 'COUNT(1)' };
 
-  replyToPlayer( $slot, "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
+  replyToPlayer( $connectedUsers[ $slot ], "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
 
 }
 
