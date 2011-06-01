@@ -74,6 +74,11 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
   - enum
   - FileHandle
   - File::ReadBackwards;
+  - use Fcntl ':seek';
+  - File::Spec::Functions 'catfile';
+  - Carp;
+  - Time::HiRes 'time';
+
 * GeoIP database files (http://geolite.maxmind.com/download/geoip/database/)
 * You have three choices for the bot to interact with the server, with
   differing requirements:
