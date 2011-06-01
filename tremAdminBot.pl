@@ -28,6 +28,9 @@ use FileHandle;
 use File::ReadBackwards;
 use Fcntl ':seek';
 use File::Spec::Functions 'catfile';
+# also uses
+# Carp;
+# Time::HiRes 'time';
 
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
@@ -179,6 +182,27 @@ our $nameRegExp = qr/${nameRegExpQuoted}|${nameRegExpUnquoted}/o;
 
 my $startupBacklog = 0;
 
+my $addr;
+my @send;
+$send[ SEND_DISABLE ] = sub{};
+$send[ SEND_PIPE ] = sub
+{
+  print( SENDPIPE "$_[ 0 ]\n" );
+};
+$send[ SEND_RCON ] = sub
+{
+  send( RCON, "\xff\xff\xff\xffrcon $rcpass $_[ 0 ]", 0, $addr );
+};
+$send[ SEND_SCREEN ] = sub
+{
+  my @cmd = ( $screenPath );
+  push( @cmd, '-S', $screenName ) if( $screenName ne '' );
+  push( @cmd, '-p', $screenWindow ) if( $screenWindow ne '' );
+  push( @cmd, qw/-q -X stuff/, "\b" x 30 . $_[ 0 ] . "\n" );
+  warn( "screen returned $?\n" ) if( system( @cmd ) != 0 );
+};
+my $sendq;
+
 my %cmds;
 sub loadcmds
 {
@@ -202,11 +226,6 @@ sub loadcmds
   closedir( CMD );
   print "done\n";
 }
-$SIG{ 'HUP' } = sub
-{
-  do( 'config.cfg' );
-  loadcmds;
-};
 loadcmds;
 
 # this makes it much easier to send signals
@@ -255,9 +274,21 @@ sub loadadmins
 }
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
-my $addr;
 if( !$backlog )
 {
+  $sendq = CommandQueue->new(
+    'method' => $send[ $sendMethod ],
+    'bucketrate' => $sendMethod == SEND_RCON ? 1000 : 1
+  );
+
+  $SIG{ 'HUP' } = sub
+  {
+    do( 'config.cfg' );
+    $sendq->set( 'method', $send[ $sendMethod ] );
+    $sendq->set( 'bucketrate', $sendMethod == SEND_RCON ? 1000 : 1 );
+    loadcmds;
+  };
+
   if( $sendMethod == SEND_PIPE )
   {
     die( "${pipefilePath} does not exist or is not a pipe. Is tremded running?" )
@@ -317,6 +348,7 @@ else
 
 while( 1 )
 {
+  $sendq->send unless( $backlog );
   if( my $line = <FILE> )
   {
     chomp $line;
@@ -592,7 +624,7 @@ while( 1 )
     }
 
     seek( FILE, 0, SEEK_CUR );
-    sleep 1;
+    select( undef, undef, undef, $sendq->get( 'period' ) );
   }
 }
 
@@ -622,39 +654,16 @@ sub printToPlayers
 sub sendconsole
 {
   my( $string ) = @_;
-  return if( $backlog || $startupBacklog || $sendMethod == SEND_DISABLE );
+  return if( $backlog || $startupBacklog );
 
   $string =~ tr/[\13\15]//d;
-  $string = substr( $string, 0, 1024 );
-  my $outstring = "";
 
-  if( $sendMethod == SEND_PIPE )
-  {
-    print( SENDPIPE "${string}\n" ) or die( "Broken pipe!" );
-  }
-  elsif( $sendMethod == SEND_RCON )
-  {
-    send( RCON, "\xff\xff\xff\xffrcon $rcpass $string", 0, $addr );
-  }
-  elsif( $sendMethod == SEND_SCREEN )
-  {
-    my @cmd = ( $screenPath );
-    push( @cmd, '-S', $screenName ) if( $screenName ne '' );
-    push( @cmd, '-p', $screenWindow ) if( $screenWindow ne '' );
-    push( @cmd, qw/-q -X stuff/, "\b" x 30 . $string . "\n" );
-    warn( "screen returned $?\n" ) if( system( @cmd ) != 0 );
-  }
-  else
+  if( $sendMethod < 0 || $sendMethod > @send )
   {
     die "Invalid $sendMethod configured";
   }
 
-  if( $outstring )
-  {
-    #print "Output: $outstring";
-  }
-  print "Sent: ${string}\n";
-  return $outstring;
+  $sendq->enqueue( $string );
 }
 
 sub updateUsers
@@ -944,4 +953,88 @@ sub cleanup
   close( SENDPIPE ) if( $sendMethod == SEND_PIPE );
   $db->disconnect( ) or warn( "Disconnection failed: $DBI::errstr\n" );
   exit;
+}
+
+
+####
+package CommandQueue;
+use strict;
+use warnings;
+use Data::Dumper;
+use Carp;
+use Time::HiRes 'time';
+
+sub new
+{
+  my( $package, %options ) = @_;
+  return bless( {
+    'time' => 0,
+    'period' => 0.05,
+    'queue' => [],
+    'maxlength' => 1023,
+    'sent' => 0,
+    'count' => 0,
+    'bucketmax' => 10,
+    'bucketrate' => 1000,
+    %options
+  }, $package );
+}
+
+sub get
+{
+  my( $cq, $key ) = @_;
+  return $cq->{ ${key} };
+}
+
+sub set
+{
+  my( $cq, $key, $value ) = @_;
+  my $current = $cq->{ $key };
+  $cq->{ $key } = $value if( @_ == 3 );
+  return $current;
+}
+
+sub send
+{
+  my( $cq ) = @_;
+  my $t = time;
+
+  if( $t - $cq->{ 'time' } >= $cq->{ 'period' } )
+  {
+    $cq->{ 'sent' } = 0;
+  }
+
+  $cq->{ 'count' } -= int( ( $t * 1000 - $cq->{ 'time' } * 1000 ) /
+    $cq->{ 'bucketrate' } );
+  $cq->{ 'count' } = 0 if( $cq->{ 'count' } < 0 );
+
+  my $remaining = $cq->{ 'maxlength' } - $cq->{ 'sent' };
+  my( $command, $len );
+  while( @{ $cq->{ 'queue' } } && $cq->{ 'count' } < $cq->{ 'bucketmax' } )
+  {
+    $len = length( $cq->{ 'queue' }[ 0 ] );
+    last if( $len > $remaining );
+    $command = shift( @{ $cq->{ 'queue' } } );
+    print "Sent: $command\n";
+    $remaining -= $len;
+    $cq->{ 'sent' } += $len;
+    $cq->{ 'method' }( $command );
+    $cq->{ 'count' }++;
+  }
+
+  $cq->{ 'time' } = $t if( $command );
+}
+
+sub enqueue
+{
+  my( $cq, $command ) = @_;
+  if( length( $command ) > $cq->{ 'maxlength' } )
+  {
+    Carp::carp( "Command too large (>$cq->{ 'maxlength' }): $command" );
+  }
+  else
+  {
+    push( @{ $cq->{ 'queue' } }, $command );
+  }
+  $cq->send;
 }
