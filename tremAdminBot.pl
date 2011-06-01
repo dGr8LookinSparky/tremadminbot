@@ -658,7 +658,7 @@ sub sendconsole
 
   $string =~ tr/[\13\15]//d;
 
-  if( $sendMethod < 0 || $sendMethod > @send )
+  if( $sendMethod < 0 || $sendMethod >= @send )
   {
     die "Invalid $sendMethod configured";
   }
