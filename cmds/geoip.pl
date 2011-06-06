@@ -23,7 +23,7 @@ our @connectedUsers;
 
 BEGIN
 {
-  eval( "use Geo::IP::nm;" );
+  eval( "use Geo::IP;" );
 }
 
 # Where do we store the geoIP database
