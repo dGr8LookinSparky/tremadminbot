@@ -179,11 +179,11 @@ my $main = qr/((?>\[[^\]]*\]|"[^"]*"|\d+[ \/:]|[^:]+)+)(?:: |$)?/;
 #clientnum "currentname"
 #"adminname" [adminlevel] (guid)
 #flags
-my $adminauth_0 = qr/^(\d+) "([^"]*)"$/;
+my $adminauth_0 = qr/^(-?\d+) "([^"]*)"$/;
 my $adminauth_1 = qr/^"([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
 #clientnum "currentname" "adminname" [adminlevel] (guid)
 #flags
-my $adminauth = qr/^(\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
+my $adminauth = qr/^(-?\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
 #clientnum "currentname" ("adminname") [adminlevel]
 #command args
 my $admincmd = qr/^(-?\d+) "([^"]*)" \("([^"]*)"\) \[(-?\d+)\]$/;
@@ -197,11 +197,10 @@ my $adminexec = qr/^(-?\d+) "([^"]*)" "([^"]*)" \[(-?\d+)\] \(([^\)]*)\)$/;
 my $admintarget = qr/^(-?\d+) \(([^\)]*)\) "([^"]*)"$/;
 ####
 
-our $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
-our $clientDisconnectRegExp = qr/^([\d]+)/;
-our $clientBeginRegExp = qr/^([\d-]+)/;
-our $adminAuthRegExp = qr/^([\d-]+) \"(.+)\" \"(.+)\" \[([\d]+)\] \(([\w]+)\)/;
-our $clientRenameRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
+my $clientConnectRegExp = qr/^(\d+) \[(.*)\] \((\w+)\) \"(.*)\" \"(.*)\"/;
+my $clientDisconnectRegExp = qr/^(\d+)/;
+my $clientBeginRegExp = qr/^(\d+)/;
+my $clientRenameRegExp = qr/^(\d+) \[(.*)\] \((\w+)\) \"(.*)\" -> \"(.*)\" \"(.*)\"/;
 
 my $startupBacklog = 0;
 
@@ -461,7 +460,7 @@ while( 1 )
       }
       elsif( $args[ LOG_TYPE ] eq "AdminAuth" )
       {
-        unless( ( $slot, $name, $name2, $level, $guid ) = $args[ LOG_ARG + 0 ] =~ $adminAuthRegExp )
+        unless( ( $slot, $name, $name2, $level, $guid ) = $args[ LOG_ARG + 0 ] =~ $adminauth )
         {
           print( "Parse failure on @args\n" );
           next;
