@@ -958,8 +958,7 @@ sub cleanup
 
 ####
 package CommandQueue;
-use strict;
-use warnings;
+use common::sense;
 use Data::Dumper;
 use Carp;
 use Time::HiRes 'time';
