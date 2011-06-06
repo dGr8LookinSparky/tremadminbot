@@ -520,7 +520,8 @@ while( 1 )
             my $target = getuser( $guid );
             unless( $target )
             {
-              print "setlevel with invalid target (this should never happen)\n";
+              # we should only get here if the target is no longer an admin or
+              # admin.dat was not or could not be parsed
               next;
             }
             $admin = {
