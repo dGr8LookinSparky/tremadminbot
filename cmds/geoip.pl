@@ -20,26 +20,15 @@ use Socket;
 
 our @connectedUsers;
 
-my $GeoIP;
-
 BEGIN
 {
-  foreach( qw/Geo::IP Geo::IP::PurePerl/ )
-  {
-    eval( "use $_;" );
-    unless( $@ )
-    {
-      $GeoIP = $_;
-      last;
-    }
-  }
+  eval( "use Geo::IP;" );
 }
-die( "No compatible Geo::IP module found\n" ) unless( $GeoIP );
 
 # Where do we store the geoIP database
 our $gipdb ||= "/usr/local/share/GeoIP/GeoLiteCity.dat";
 
-my $gi = $GeoIP->open( $gipdb, GEOIP_STANDARD );
+my $gi = Geo::IP->open( $gipdb, GEOIP_STANDARD );
 
 sub getrecord
 {
