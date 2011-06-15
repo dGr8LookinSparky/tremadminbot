@@ -46,6 +46,9 @@ use enum qw( DEM_KICK DEM_BAN DEM_MUTE DEM_DENYBUILD );
 # Path to games.log
 our $logpath = "games.log";
 
+# Path to admin.dat
+our $adminpath = "admin.dat";
+
 # Where do we store the database
 our $dbfile = "bot.db";
 
@@ -148,6 +151,7 @@ our $gi = Geo::IP::PurePerl->open( $gipdb, GEOIP_STANDARD );
 # allocate
 use constant MAX_CLIENTS => 64;
 our @connectedUsers;
+our @admins;
 for( my $i = 0; $i < MAX_CLIENTS; $i++ )
 {
   push( @connectedUsers, { 'connected' => CON_DISCONNECTED } );
@@ -233,6 +237,55 @@ loadcmds;
 
 # this makes it much easier to send signals
 $0 = __FILE__;
+
+# these are generally usable like clients
+sub loadadmins
+{
+  unless( open( ADMIN, '<', $adminpath ) )
+  {
+    warn( "could not open $adminpath: $!\n" );
+    return;
+  }
+  @admins = ();
+  while( my $line = <ADMIN> )
+  {
+    next unless( $line =~ /^\[admin]$/ );
+    my $admin = {};
+    while( $line = <ADMIN> )
+    {
+      last unless( my ( $key, $val ) = $line =~ /\s*(\w+)\s+=\s+((?<=")[^"]*(?="?)|[^\n]+)/ );
+      $admin->{ lc( $key ) } = $val;
+    }
+    if( exists( $admin->{ 'level' } ) && exists( $admin->{ 'name' } ) )
+    {
+      push( @admins, {
+        'connected' => CON_DISCONNECTED,
+        'name' => $admin->{ 'name' },
+        'nameColored' => $admin->{ 'name' },
+        'aname' => $admin->{ 'name' },
+        'alevel' => $admin->{ 'level' },
+        'GUID' => $admin->{ 'guid' }
+      });
+      $admins[ -1 ]->{ 'name' } =~ s/\^[\da-z]//gi; #decolor
+
+      # Copy info to @connectedUsers if user is connected
+      my $target = getuser( $admin->{ 'guid' } );
+      if( $target )
+      {
+        $target->{ 'alevel' } = $admin->{ 'level' };
+        $target->{ 'aname' } = $admin->{ 'name' };
+      }
+    }
+    redo if( $line ne '' ); #necessary if input is malformed in some way by manual editing
+  }
+  close( ADMIN );
+
+  @admins = sort { $b->{ 'alevel' } <=> $a->{ 'alevel' } } @admins;
+  for( my $i = 0; $i < @admins; $i++ )
+  {
+    $admins[ $i ]{ 'slot' } = MAX_CLIENTS + $i;
+  }
+}
 
 open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
 if( !$backlog )
@@ -332,7 +385,11 @@ while( 1 )
 
     if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ $lineRegExp )
     {
-      if( $arg0 eq "ClientConnect" )
+      if( $arg0 eq "InitGame" )
+      {
+        loadadmins unless( $backlog );
+      }
+      elsif( $arg0 eq "ClientConnect" )
       {
         unless( @_ = $args =~ $clientConnectRegExp )
         {
@@ -419,11 +476,7 @@ while( 1 )
       {
         $servertsstr = $args;
       }
-
-      # Commands after this point are not interacted with in startupBacklog conditions
-      next if( $startupBacklog );
-
-      if( $arg0 eq "AdminExec" )
+      elsif( $arg0 eq "AdminExec" )
       {
         unless( @_ = $args =~ $adminExecRegExp )
         {
@@ -444,13 +497,66 @@ while( 1 )
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
 
+        if( $acmd eq "readconfig" )
+        {
+          # reset all admin info and reload it
+          for( my $i = 0; $i < @connectedUsers - 1; $i++ )
+          {
+            my $user = $connectedUsers[ $i ];
+            $user->{ 'alevel' } = 0 if( defined $user->{ 'alevel' } );
+            $user->{ 'aname' } = "" if( defined $user->{ 'aname' } );
+          }
+          loadadmins unless( $backlog );
+        }
+        elsif( $acmd eq "setlevel" )
+        {
+          unless( @_ = $acmdargs =~ /^(-?\d+) \((\w+)\) ($nameRegExpQuoted)/ )
+          {
+            print( "Parse failure on AdminExec ${acmdargs}\n" );
+            next;
+          }
+          my( $level, $guid, $name ) = @_;
+          # remove the "s
+          $name = substr( $name, 1, length( $name ) - 2 );
+          my $admin = getadmin( $guid );
+          if( $admin )
+          {
+            $admin->{ 'alevel' } = $level;
+            $admin->{ 'name' } = $name;
+            $admin->{ 'aname' } = $name;
+          }
+          else
+          {
+            my $target = getuser( $guid );
+            unless( $target )
+            {
+              print "setlevel with invalid target (this should never happen)\n" if( !$startupBacklog );
+              next;
+            }
+            $admin = {
+              'connected' => CON_DISCONNECTED,
+              'name' => $name,
+              'nameColored' => $target->{ 'nameColored' },
+              'aname' => $name,
+              'alevel' => $level,
+              'GUID' => $guid,
+              'slot' => MAX_CLIENTS + @admins
+            };
+            $target->{ 'alevel' } = $level;
+            $target->{ 'aname' } = $name;
+            push( @admins, $admin );
+          }
+        }
+
+        # Commands after this point are not interacted with in startupBacklog conditions
+        next if( $startupBacklog );
+
         next if( $backlog && exists( $cmds{ $acmd } ) );
 
         if( exists( $cmds{ $acmd } ) )
         {
           $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
         }
-        # --------- Stuff that we don't respond to, but track ---------
         elsif( $acmd eq "kick" )
         {
           unless( @_ = $acmdargs =~ /^([\d]+) \(([\w]+)\) ($nameRegExpQuoted): \"(.*)\"/ )
@@ -534,6 +640,10 @@ while( 1 )
     if( $startupBacklog )
     {
       $startupBacklog = 0;
+
+      # do a readconfig on startup to see that admins are sorted and up to date
+      sendconsole( "readconfig" );
+
       print( "Finished startup routines. Watching logfile:\n" );
     }
 
@@ -682,6 +792,76 @@ sub memocheck
 
   replyToPlayer( $connectedUsers[ $slot ], "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
 
+}
+
+sub getadmin
+{
+  my $guid = lc( $_[ 0 ] );
+  foreach my $admin ( @admins )
+  {
+    return $admin if( lc( $admin->{ 'GUID' } ) eq $guid );
+  }
+  return;
+}
+
+sub cleanstring
+{
+  ( my $str = lc( $_[ 0 ] ) ) =~ s/[^\da-z]//gi;
+  return $str;
+}
+
+sub findadmin
+{
+  my( $string, $err ) = @_;
+
+  if( $string =~ /^\d+$/ )
+  {
+    if( $string < MAX_CLIENTS )
+    {
+      return $connectedUsers[ $string ]
+        if( $connectedUsers[ $string ]{ 'connected' } != CON_DISCONNECTED );
+      $$err = "no player connected in slot $string";
+    }
+
+    return $admins[ $string - MAX_CLIENTS ]
+      if( $string - MAX_CLIENTS < @admins );
+
+    $$err = "$string not in range 1-" . ( $#admins + MAX_CLIENTS );
+    return;
+  }
+
+  $string = cleanstring( $string );
+  my( $cmp, $match );
+  foreach my $user ( @admins, @connectedUsers )
+  {
+    $cmp = cleanstring( $user->{ 'name' } );
+    # names should be unique, so return on exact match
+    return $user if( $string eq $cmp );
+    if( index( $cmp, $string ) > -1 )
+    {
+      if( $match )
+      {
+        $$err = "more than one match.  use the listplayers or listadmins to " .
+          "find an appropriate number to use instead of name.";
+        return;
+      }
+      $match = $user;
+    }
+  }
+  $$err = "no match.  use listplayers or listadmins to " .
+    "find an appropriate number to use instead of name." unless( $match );
+  return $match;
+}
+
+sub getuser
+{
+  my ( $string ) = @_;
+  my $guid = lc( $string );
+  foreach my $user ( @connectedUsers )
+  {
+    return $user if( lc( $user->{ 'GUID' } ) eq $guid );
+  }
+  return;
 }
 
 sub slotFromString
