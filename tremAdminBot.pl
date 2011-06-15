@@ -304,9 +304,9 @@ sub loadadmins
     }
     redo if( $_ ne '' );
   }
-  close( ADMINS );
+  close( ADMIN );
 
-  @admins = sort { $b->{ 'level' } <=> $a->{ 'level' } } @admins;
+  @admins = sort { $b->{ 'alevel' } <=> $a->{ 'alevel' } } @admins;
   for( my $i = 0; $i < @admins; $i++ )
   {
     $admins[ $i ]{ 'slot' } = MAX_CLIENTS + $i;
