@@ -43,9 +43,14 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
   - Print the reverse DNS and city/region/country a user is connecting from
   - User must be connected currently, or else you can specify an IP address
     directly.
+* l0 <name|slot#|admin#>
+  - Set a user who is currently admin level 1 to admin level 0
+  - admin# is the number given in /listadmins
+  - If no arguments are given, and user is l1, sets them to level 0
 * l1 <name|slot#>
   - Set a user who is currently admin level 0 to admin level 1
   - User must be currently connected
+  - If no arguments are given, and user is l0, sets them to level 1
 * aliases <name|slot#>
   - See the aliases of a user who is currently connected
   - Aliases are resolved by GUID
@@ -136,6 +141,12 @@ command = geoip
 exec = 
 desc = Look up a user's country etc.
 flag = geoip
+
+[command]
+command = l0
+exec = 
+desc = Set a level 1 user to level 0
+flag = l0
 
 [command]
 command = l1

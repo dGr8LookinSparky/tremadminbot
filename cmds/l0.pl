@@ -6,7 +6,7 @@ sub
 
   print( "Cmd: $user->{name} /l0 ${acmdargs}\n" );
 
-  my$targ ;
+  my $targ;
 
   if( $user->{ 'alevel' } == 1 )
   {
@@ -14,7 +14,7 @@ sub
   }
   elsif( $acmdargs eq "" )
   {
-    replyToPlayer( $user, "^3l0:^7 usage: l0 <name|slot#>" );
+    replyToPlayer( $user, "^3l0:^7 usage: l0 <name|slot#|admin#>" );
     return;
   }
   else
@@ -23,7 +23,7 @@ sub
     $targ = findadmin( $acmdargs, \$err );
     unless( $targ )
     {
-      replyToPlayer( $user, "^3l1:^7 ${err}" );
+      replyToPlayer( $user, "^3l0:^7 ${err}" );
       return;
     }
   }
