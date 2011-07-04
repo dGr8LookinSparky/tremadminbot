@@ -144,6 +144,7 @@ my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCo
 # allocate
 use constant MAX_CLIENTS => 64;
 our @connectedUsers;
+our @admins;
 for( my $i = 0; $i < MAX_CLIENTS; $i++ )
 {
   push( @connectedUsers, { 'connected' => CON_DISCONNECTED } );
@@ -272,7 +273,6 @@ sub unenclose( $ )
 }
 
 # these are generally usable like clients
-our @admins;
 sub loadadmins
 {
   unless( open( ADMIN, '<', $adminpath ) )
@@ -281,14 +281,14 @@ sub loadadmins
     return;
   }
   @admins = ();
-  while( <ADMIN> )
+  while( my $line = <ADMIN> )
   {
-    next unless( /^\[admin]$/ );
+    next unless( $line =~ /^\[admin]$/ );
     my $admin = {};
-    while( <ADMIN> )
+    while( $line = <ADMIN> )
     {
-      last unless( /\s*(\w+)\s+=\s+((?<=")[^"]*(?="?)|[^\n]+)/ );
-      $admin->{ lc( $1 ) } = $2;
+      last unless( my ( $key, $val ) = $line =~ /\s*(\w+)\s+=\s+((?<=")[^"]*(?="?)|[^\n]+)/ );
+      $admin->{ lc( $key ) } = $val;
     }
     if( exists( $admin->{ 'level' } ) && exists( $admin->{ 'name' } ) )
     {
@@ -300,9 +300,17 @@ sub loadadmins
         'alevel' => $admin->{ 'level' },
         'GUID' => $admin->{ 'guid' }
       });
-      $admins[ -1 ]->{ 'name' } =~ s/\^[\da-z]//gi;
+      $admins[ -1 ]->{ 'name' } =~ s/\^[\da-z]//gi; #decolor
+
+      # Copy info to @connectedUsers if user is connected
+      my $target = getuser( $admin->{ 'guid' } );
+      if( $target )
+      {
+        $target->{ 'alevel' } = $admin->{ 'level' };
+        $target->{ 'aname' } = $admin->{ 'name' };
+      }
     }
-    redo if( $_ ne '' );
+    redo if( $line ne '' ); #necessary if input is malformed in some way by manual editing
   }
   close( ADMIN );
 
@@ -492,11 +500,7 @@ while( 1 )
       {
         $servertsstr = $args[ LOG_ARG + 0 ];
       }
-
-      # Commands after this point are not interacted with in startupBacklog conditions
-      next if( $startupBacklog );
-
-      if( $args[ LOG_TYPE ] eq "AdminExec" )
+      elsif( $args[ LOG_TYPE ] eq "AdminExec" )
       {
         next if( $args[ LOG_ARG + 0 ] ne 'ok' );
         unless( ( $slot, $name, $name2, $level, $guid ) = $args[ LOG_ARG + 1 ] =~ $adminexec )
@@ -513,18 +517,17 @@ while( 1 )
         # should only be blank for console
         $guid ||= 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
-        next if( $backlog && exists( $cmds{ $acmd } ) );
-
         my( $targslot, $targGUID, $targName );
 
-        if( exists( $cmds{ $acmd } ) )
+        if( $acmd eq "readconfig" )
         {
-          @acmdargs = $acmdargs[ 0 ] =~ /$adminargs/go;
-          $cmds{ $acmd }( $connectedUsers[ $slot ], \@acmdargs, $timestamp, $db );
-        }
-        # --------- Stuff that we don't respond to, but track ---------
-        elsif( $acmd eq "readconfig" )
-        {
+          # reset all admin info and reload it
+          for( my $i = 0; $i < @connectedUsers - 1; $i++ )
+          {
+            my $user = $connectedUsers[ $i ];
+            $user->{ 'alevel' } = 0 if( defined $user->{ 'alevel' } );
+            $user->{ 'aname' } = "" if( defined $user->{ 'aname' } );
+          }
           loadadmins unless( $backlog );
         }
         elsif( $acmd eq "setlevel" )
@@ -548,8 +551,7 @@ while( 1 )
             my $target = getuser( $guid );
             unless( $target )
             {
-              # we should only get here if the target is no longer an admin or
-              # admin.dat was not or could not be parsed
+              print "setlevel with invalid target (this should never happen)\n" if( !$startupBacklog );
               next;
             }
             $admin = {
@@ -565,6 +567,17 @@ while( 1 )
             $target->{ 'aname' } = $name;
             push( @admins, $admin );
           }
+        }
+
+        # Commands after this point are not interacted with in startupBacklog conditions
+        next if( $startupBacklog );
+
+        next if( $backlog && exists( $cmds{ $acmd } ) );
+
+        if( exists( $cmds{ $acmd } ) )
+        {
+          @acmdargs = $acmdargs[ 0 ] =~ /$adminargs/go;
+          $cmds{ $acmd }( $connectedUsers[ $slot ], \@acmdargs, $timestamp, $db );
         }
         elsif( $acmd eq "kick" )
         {
@@ -647,6 +660,10 @@ while( 1 )
     if( $startupBacklog )
     {
       $startupBacklog = 0;
+
+      # do a readconfig on startup to see that admins are sorted and up to date
+      sendconsole( "readconfig" );
+
       print( "Finished startup routines. Watching logfile:\n" );
     }
 
@@ -809,9 +826,9 @@ sub memocheck
 sub getadmin
 {
   my $guid = lc( $_[ 0 ] );
-  foreach( @admins )
+  foreach my $admin ( @admins )
   {
-    return $_ if( lc( $_->{ 'GUID' } ) eq $guid );
+    return $admin if( lc( $admin->{ 'GUID' } ) eq $guid );
   }
   return;
 }
@@ -844,11 +861,11 @@ sub findadmin
 
   $string = cleanstring( $string );
   my( $cmp, $match );
-  foreach( @admins, @connectedUsers )
+  foreach my $user ( @admins, @connectedUsers )
   {
-    $cmp = cleanstring( $_->{ 'name' } );
+    $cmp = cleanstring( $user->{ 'name' } );
     # names should be unique, so return on exact match
-    return $_ if( $string eq $cmp );
+    return $user if( $string eq $cmp );
     if( index( $cmp, $string ) > -1 )
     {
       if( $match )
@@ -857,7 +874,7 @@ sub findadmin
           "find an appropriate number to use instead of name.";
         return;
       }
-      $match = $_;
+      $match = $user;
     }
   }
   $$err = "no match.  use listplayers or listadmins to " .
@@ -867,10 +884,11 @@ sub findadmin
 
 sub getuser
 {
-  my $guid = lc( $_[ 0 ] );
-  foreach( @connectedUsers )
+  my ( $string ) = @_;
+  my $guid = lc( $string );
+  foreach my $user ( @connectedUsers )
   {
-    return $_ if( lc( $_->{ 'GUID' } ) eq $guid );
+    return $user if( lc( $user->{ 'GUID' } ) eq $guid );
   }
   return;
 }
