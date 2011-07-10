@@ -540,10 +540,12 @@ while( 1 )
         }
         elsif( $acmd eq "readconfig" )
         {
-          loadadmins;
+          loadadmins unless( $backlog );
         }
         elsif( $acmd eq "setlevel" )
         {
+          next if( $backlog );
+
           unless( ( $level, $guid, $name ) = $acmdargs[ 0 ] =~ $admintarget )
           {
             print( "Parse failure on AdminExec @acmdargs\n" );
