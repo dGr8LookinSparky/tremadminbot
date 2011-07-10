@@ -240,6 +240,13 @@ sub loadadmins
     warn( "could not open $adminpath: $!\n" );
     return;
   }
+
+  for( my $i = 0; $i < MAX_CLIENTS; $i++ )
+  {
+    $connectedUsers[ $i ]{ 'aname' } = '';
+    $connectedUsers[ $i ]{ 'alevel' } = 0;
+  }
+
   @admins = ();
   while( my $line = <ADMIN> )
   {
@@ -381,7 +388,9 @@ while( 1 )
     {
       if( $arg0 eq "InitGame" )
       {
-        loadadmins unless( $backlog );
+        # this is only necessary in "live" mode since "readconfig" is sent when
+        # the backlog is cleared
+        loadadmins unless( $backlog || $startupBacklog );
       }
       elsif( $arg0 eq "ClientConnect" )
       {
@@ -491,16 +500,18 @@ while( 1 )
         #`print "admin command: status: ${status} slot ${slot} name ${name} aname ${aname} acmd ${acmd} acmdargs ${acmdargs}\n";
         next if( "${status}" ne "ok" );
 
-        if( $acmd eq "readconfig" )
+        # Commands after this point are not interacted with in startupBacklog conditions
+        next if( $startupBacklog );
+
+        next if( $backlog && exists( $cmds{ $acmd } ) );
+
+        if( exists( $cmds{ $acmd } ) )
         {
-          # reset all admin info and reload it
-          for( my $i = 0; $i < @connectedUsers - 1; $i++ )
-          {
-            my $user = $connectedUsers[ $i ];
-            $user->{ 'alevel' } = 0 if( defined $user->{ 'alevel' } );
-            $user->{ 'aname' } = "" if( defined $user->{ 'aname' } );
-          }
-          loadadmins unless( $backlog );
+          $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
+        }
+        elsif( $acmd eq "readconfig" )
+        {
+          loadadmins;
         }
         elsif( $acmd eq "setlevel" )
         {
@@ -540,16 +551,6 @@ while( 1 )
             $target->{ 'aname' } = $name;
             push( @admins, $admin );
           }
-        }
-
-        # Commands after this point are not interacted with in startupBacklog conditions
-        next if( $startupBacklog );
-
-        next if( $backlog && exists( $cmds{ $acmd } ) );
-
-        if( exists( $cmds{ $acmd } ) )
-        {
-          $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
         }
         elsif( $acmd eq "kick" )
         {
