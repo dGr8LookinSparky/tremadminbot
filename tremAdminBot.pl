@@ -668,7 +668,7 @@ while( 1 )
     }
 
     # the log might have been moved
-    if( !$ingame && ( !-f( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
+    if( !$ingame && ( !-e( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
     {
       print( "Logfile moved, reopening\n" );
       # retry for up to 3 seconds before giving up
