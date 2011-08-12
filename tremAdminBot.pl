@@ -169,7 +169,7 @@ my $servertsstr = "";
 my $servertsminoff;
 my $servertssecoff;
 
-our $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): (.*)/;
+our $lineRegExp = qr/^([\d ]{3}):([\d]{2}) ([\w]+): ?(.*)/;
 our $clientConnectRegExp = qr/^([\d]+) \[(.*)\] \(([\w]+)\) \"(.*)\" \"(.*)\"/;
 our $clientDisconnectRegExp = qr/^([\d]+)/;
 our $clientBeginRegExp = qr/^([\d-]+)/;
@@ -288,7 +288,50 @@ sub loadadmins
   }
 }
 
-open( FILE, "<",  $logpath ) or die( "open logfile failed: ${logpath}" );
+my $inode;
+sub openLog
+{
+  my $tries = $_[ 0 ] || 1;
+  while( $tries-- > 0 )
+  {
+    last if( open( FILE, "<", $logpath ) );
+    sleep( 1 ) if( $tries );
+  }
+  die( "open logfile failed: ${logpath}" ) unless( defined( fileno( FILE ) ) );
+
+  if( !$backlog )
+  {
+    $inode = (stat( FILE ))[ 1 ];
+
+    # Seek back to the start of the current game
+    my $bw = File::ReadBackwards->new( $logpath );
+    my $seekPos = 0;
+    $startupBacklog = 1;
+
+    while( defined( my $line = $bw->readline( ) ) )
+    {
+      if( $line =~ $lineRegExp )
+      {
+        my $arg0 = $3;
+        if( $arg0 eq "InitGame" )
+        {
+          $seekPos = $bw->tell( );
+          last( );
+        }
+      }
+    }
+
+    if( $seekPos )
+    {
+      seek( FILE, $seekPos, SEEK_SET ) or die( "seek fail" );
+    }
+    else
+    {
+      seek( FILE, 0, SEEK_END ) or die( "seek fail" );
+    }
+  }
+}
+
 if( !$backlog )
 {
   $sendq = CommandQueue->new(
@@ -328,39 +371,14 @@ if( !$backlog )
     }
     die( "Can't resolve $ip\n" ) unless( $addr );
   }
-
-  # Seek back to the start of the current game
-  my $bw = File::ReadBackwards->new( $logpath );
-  my $seekPos = 0;
-  $startupBacklog = 1;
-
-  while( defined( my $line = $bw->readline( ) ) )
-  {
-    if( $line =~ $lineRegExp )
-    {
-      my $arg0 = $3;
-      if( $arg0 eq "InitGame" )
-      {
-        $seekPos = $bw->tell( );
-        last( );
-      }
-    }
-  }
-
-  if( $seekPos )
-  {
-    seek( FILE, $seekPos, SEEK_SET ) or die( "seek fail" );
-  }
-  else
-  {
-    seek( FILE, 0, SEEK_END ) or die( "seek fail" );
-  }
 }
 else
 {
   print( "Processing backlog on file ${logpath}. This will take a long time for large files.\n" );
 }
 
+my $ingame;
+openLog;
 while( 1 )
 {
   $sendq->send unless( $backlog );
@@ -386,8 +404,13 @@ while( 1 )
 
     if( ( $servertsminoff, $servertssecoff, my $arg0, my $args ) = $line =~ $lineRegExp )
     {
-      if( $arg0 eq "InitGame" )
+      if( $arg0 eq "ShutdownGame" )
       {
+        $ingame = 0;
+      }
+      elsif( $arg0 eq "InitGame" )
+      {
+        $ingame = 1;
         # this is only necessary in "live" mode since "readconfig" is sent when
         # the backlog is cleared
         loadadmins unless( $backlog || $startupBacklog );
@@ -644,8 +667,19 @@ while( 1 )
       print( "Finished startup routines. Watching logfile:\n" );
     }
 
-    seek( FILE, 0, SEEK_CUR );
-    select( undef, undef, undef, $sendq->get( 'period' ) );
+    # the log might have been moved
+    my $ni = (stat( $logpath ))[ 1 ];
+    if( !$ingame && ( !-f( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
+    {
+      print( "Logfile moved, reopening\n" );
+      # retry for up to 3 seconds before giving up
+      openLog( 3 );
+    }
+    else
+    {
+      seek( FILE, 0, SEEK_CUR );
+      select( undef, undef, undef, $sendq->get( 'period' ) );
+    }
   }
 }
 
