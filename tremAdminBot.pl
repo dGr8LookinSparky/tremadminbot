@@ -668,7 +668,6 @@ while( 1 )
     }
 
     # the log might have been moved
-    my $ni = (stat( $logpath ))[ 1 ];
     if( !$ingame && ( !-f( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
     {
       print( "Logfile moved, reopening\n" );
