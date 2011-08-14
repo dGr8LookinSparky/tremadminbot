@@ -976,6 +976,7 @@ sub getuser
   my $guid = lc( $string );
   foreach my $user ( @connectedUsers )
   {
+    next if( $user->{ 'connected' } == CON_DISCONNECTED );
     return $user if( lc( $user->{ 'GUID' } ) eq $guid );
   }
   return;
