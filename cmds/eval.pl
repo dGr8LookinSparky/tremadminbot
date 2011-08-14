@@ -6,7 +6,7 @@ sub
 
   print( "Cmd: $user->{name} /eval ${acmdargs}\n" );
 
-  my $response = eval( $acmdargs );
-  ( $response ) = $@ =~ /^(.*) at .*? line \d+/ if( $@ );
-  replyToPlayer( $user, $response );
+  my @response = eval( $acmdargs );
+  @response = $@ =~ /^(.*) at .*? line \d+/ if( $@ );
+  replyToPlayer( $user, "@response" );
 };
