@@ -8,5 +8,6 @@ sub
 
   my @response = eval( $acmdargs );
   @response = $@ =~ /^(.*) at .*? line \d+/ if( $@ );
-  replyToPlayer( $user, "@response" );
+  @response = split( /\n/, "@response" );
+  replyToPlayer( $user, $_ ) foreach( @response );
 };
