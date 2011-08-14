@@ -670,6 +670,7 @@ while( 1 )
     # the log might have been moved
     if( !$ingame && ( !-e( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
     {
+      close( FILE );
       print( "Logfile moved, reopening\n" );
       # retry for up to 3 seconds before giving up
       openLog( 3 );
