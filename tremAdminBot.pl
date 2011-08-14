@@ -89,6 +89,9 @@ our $screenName = "tremded";
 # session
 our $screenWindow = "0";
 
+# only show demerits over the past x days (or forever if <= 0)
+our $demeritdays = 90;
+
 do 'config.cfg';
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
@@ -474,6 +477,12 @@ while( 1 )
 
         updateUsers( $timestamp, $slot );
 
+        # if their rapsheet is too long, warn connected admins
+        my @demerits = demerits( 'userID', $connectedUsers[ $slot ]{ 'userID' } );
+        if( $demerits[ DEM_KICK ] + $demerits[ DEM_BAN ] > 3 || $demerits[ DEM_DENYBUILD ] > 5 )
+        {
+          sendconsole( "a $name may be a troublemaker: Kicks: $demerits[ DEM_KICK ] Bans: $demerits[ DEM_BAN ] Mutes: $demerits[ DEM_MUTE ] Denybuilds: $demerits[ DEM_DENYBUILD ]" );
+        }
       }
       elsif( $args[ LOG_TYPE ] eq "ClientDisconnect" )
       {
@@ -858,6 +867,48 @@ sub memocheck
 
   replyToPlayer( $connectedUsers[ $slot ], "You have ${count} new memos. Use /memo list to read." ) if( $count > 0 );
 
+}
+
+sub demerits
+{
+  my( $type, $value, $err ) = @_;
+  my $r = int( $demeritdays );
+  $r = $r > 0 ? "timeStamp >= datetime( 'now', '-$r days' ) AND" : "";
+  my $dst;
+  if( $type eq 'SUBNET' )
+  {
+    # this sucks
+    if( $value =~ s/^(?=(?:\d{1,3}\.){3})\d{1,3}$/%/ )
+    {
+      $dst = $db->prepare( "SELECT demeritType FROM demerits WHERE $r IP LIKE ?" );
+    }
+    else
+    {
+      $$err = 'SUBNET matches only work with IPv4 addresses' if( $err );
+      return;
+    }
+  }
+  else
+  {
+    # ? is treated as a string (which userID is not), but that's probably okay
+    $dst = $db->prepare( "SELECT demeritType FROM demerits WHERE $r $type = ?" );
+  }
+  unless( $dst )
+  {
+    $$err = 'database error' if( $err );
+    return;
+  }
+  unless( $dst->execute( $value ) )
+  {
+    $$err = 'database error: ' . $dst->errstr if( $err );
+    return;
+  }
+  my @demerits = ( 0, 0, 0, 0 );
+  while( my $dem = $dst->fetch )
+  {
+    $demerits[ $dem->[ 0 ] ]++;
+  }
+  return @demerits;
 }
 
 sub getadmin
