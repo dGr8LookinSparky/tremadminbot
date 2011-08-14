@@ -44,60 +44,25 @@ sub
   my $targIP = $connectedUsers[ $targslot ]{ 'IP' };
 
   my $searchtype;
-  my $query;
-  if( lc( $param ) eq "ip" )
+  my $target;
+  if( lc( $param ) eq "ip" || lc( $param ) eq "subnet" )
   {
-    $searchtype = "IP";
-    my $targIPq = $db->quote( $targIP );
-    $query = "SELECT demeritType FROM demerits WHERE IP = ${targIPq}";
-  }
-  elsif( lc( $param ) eq "subnet" )
-  {
-    $searchtype = "SUBNET";
-    if( my( $ip1, $ip2, $ip3, $ip4 ) = $targIP =~ /([\d]+)\.([\d]+)\.([\d]+)\.([\d]+)/ )
-    {
-      my $targSubq = $db->quote( "${ip1}.${ip2}.${ip3}.\%" );
-      $query = "SELECT demeritType FROM demerits WHERE IP LIKE ${targSubq}";
-    }
-    else
-    {
-      replyToPlayer( $user, "^3rapsheet:^7 player is not connected via ipv4." );
-      return;
-    }
+    $searchtype = uc( $param );
+    $target = $targIP;
   }
   else
   {
-    $searchtype = "GUID";
-    $query = "SELECT demeritType FROM demerits WHERE userID = ${targUserID}";
+    $searchtype = "userID";
+    $target = $targUserID;
   }
 
-  my $kicks = 0;
-  my $bans = 0;
-  my $mutes = 0;
-  my $denybuilds = 0;
-
-  my $demq = $db->prepare( $query );
-  $demq->execute;
-
-  while( my $dem = $demq->fetchrow_hashref( ) )
+  my $err;
+  my @demerits = demerits( $searchtype, $target, \$err );
+  unless( @demerits )
   {
-    if( $dem->{ 'demeritType' } == DEM_KICK )
-    {
-      $kicks++;
-    }
-    elsif( $dem->{ 'demeritType' } == DEM_BAN )
-    {
-      $bans++;
-    }
-    elsif( $dem->{ 'demeritType' } == DEM_MUTE )
-    {
-      $mutes++;
-    }
-    elsif( $dem->{ 'demeritType' } == DEM_DENYBUILD )
-    {
-      $denybuilds++;
-    }
+    replyToPlayer( $user, "^3rapsheet: ^7$err" );
+    return;
   }
 
-  replyToPlayer( $user, "^3rapsheet:^7 ${targName}^7 offenses by ${searchtype}: Kicks: ${kicks} Bans: ${bans} Mutes: ${mutes} Denybuilds: ${denybuilds}" );
+  replyToPlayer( $user, "^3rapsheet:^7 ${targName}^7 offenses by ${searchtype}: Kicks: $demerits[ DEM_KICK ] Bans: $demerits[ DEM_BAN ] Mutes: $demerits[ DEM_MUTE ] Denybuilds: $demerits[ DEM_DENYBUILD ]" );
 };
