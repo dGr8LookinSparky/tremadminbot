@@ -1,5 +1,3 @@
-use common::sense;
-
 sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
