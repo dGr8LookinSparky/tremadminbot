@@ -249,7 +249,7 @@ sub loadadmins
   @admins = ();
   while( my $line = <ADMIN> )
   {
-    next unless( $line =~ /^\[admin]$/ );
+    next unless( $line && $line =~ /^\[admin]$/ );
     my $admin = {};
     while( $line = <ADMIN> )
     {
