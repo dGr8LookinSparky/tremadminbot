@@ -96,7 +96,11 @@ do 'config.cfg';
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
 
-$SIG{INT} = \&cleanup;
+$SIG{INT} = sub
+{
+  cleanup();
+  exit;
+};
 $SIG{__DIE__} = \&errorHandler;
 
 print( "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n" );
@@ -424,6 +428,7 @@ sub initmsg
 sub hup
 {
   require( 'config.cfg' );
+  cleanup() if( $db );
   initdb;
   if( !$backlog )
   {
@@ -1107,7 +1112,6 @@ sub cleanup
   close( FILE );
   close( SENDPIPE ) if( $sendMethod == SEND_PIPE );
   $db->disconnect( ) or warn( "Disconnection failed: $DBI::errstr\n" );
-  exit;
 }
 
 
