@@ -107,41 +107,46 @@ print( "This is free software, and you are welcome to redistribute it under cert
 print( "For details, see gpl.txt\n" );
 print( "-------------------------------------------------------------------------------------------\n" );
 
-my $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
+my $db;
 
-# uncomment to dump all db activity to stdout
-#`$db->{TraceLevel} = 1;
-
-# create tables if they do not exist already
+sub initdb
 {
-  my @tables;
+  $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
 
-  @tables = $db->tables( undef, undef, "users", undef );
-  if( !scalar @tables )
-  {
-    $db->do( "CREATE TABLE users( userID INTEGER PRIMARY KEY, name TEXT, GUID TEXT, useCount INTEGER, seenTime DATETIME, IP TEXT, adminLevel INTEGER, city TEXT, region TEXT, country TEXT )" );
-    $db->do( "CREATE INDEX guidIndex on users( GUID )" );
-    $db->do( "INSERT INTO users ( name, GUID, useCount, adminLevel ) VALUES ( \'console\', \'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\', 0, 999 )" );
-  }
+  # uncomment to dump all db activity to stdout
+  #`$db->{TraceLevel} = 1;
 
-  @tables = $db->tables( undef, undef, "names", undef );
-  if( !scalar @tables )
+  # create tables if they do not exist already
   {
-    $db->do( "CREATE TABLE names( nameID INTEGER PRIMARY KEY, name TEXT, nameColored TEXT, userID INTEGER, useCount INTEGER, seenTime DATETIME, FOREIGN KEY( userID ) REFERENCES users( userID ) )" );
-    $db->do( "CREATE INDEX nameIndex on names( name )" );
-    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( \'console\', \'console\', 1, 0 )" );
-  }
+    my @tables;
 
-  @tables = $db->tables( undef, undef, "memos", undef );
-  if( !scalar @tables )
-  {
-    $db->do( "CREATE TABLE memos( memoID INTEGER PRIMARY KEY, userID INTEGER, sentBy INTEGER, sentTime DATETIME, readTime DATETIME, msg TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( sentby ) REFERENCES users( userID ) )" ) if( !scalar @tables );
-  }
+    @tables = $db->tables( undef, undef, "users", undef );
+    if( !scalar @tables )
+    {
+      $db->do( "CREATE TABLE users( userID INTEGER PRIMARY KEY, name TEXT, GUID TEXT, useCount INTEGER, seenTime DATETIME, IP TEXT, adminLevel INTEGER, city TEXT, region TEXT, country TEXT )" );
+      $db->do( "CREATE INDEX guidIndex on users( GUID )" );
+      $db->do( "INSERT INTO users ( name, GUID, useCount, adminLevel ) VALUES ( \'console\', \'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\', 0, 999 )" );
+    }
 
-  @tables = $db->tables( undef, undef, "demerits", undef );
-  if( !scalar @tables )
-  {
-    $db->do( "CREATE TABLE demerits( demeritID INTEGER PRIMARY KEY, userID INTEGER, demeritType INTEGER, admin INTEGER, reason TEXT, timeStamp DATETIME, duration INTEGER, IP TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( admin ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+    @tables = $db->tables( undef, undef, "names", undef );
+    if( !scalar @tables )
+    {
+      $db->do( "CREATE TABLE names( nameID INTEGER PRIMARY KEY, name TEXT, nameColored TEXT, userID INTEGER, useCount INTEGER, seenTime DATETIME, FOREIGN KEY( userID ) REFERENCES users( userID ) )" );
+      $db->do( "CREATE INDEX nameIndex on names( name )" );
+      $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( \'console\', \'console\', 1, 0 )" );
+    }
+
+    @tables = $db->tables( undef, undef, "memos", undef );
+    if( !scalar @tables )
+    {
+      $db->do( "CREATE TABLE memos( memoID INTEGER PRIMARY KEY, userID INTEGER, sentBy INTEGER, sentTime DATETIME, readTime DATETIME, msg TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( sentby ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+    }
+
+    @tables = $db->tables( undef, undef, "demerits", undef );
+    if( !scalar @tables )
+    {
+      $db->do( "CREATE TABLE demerits( demeritID INTEGER PRIMARY KEY, userID INTEGER, demeritType INTEGER, admin INTEGER, reason TEXT, timeStamp DATETIME, duration INTEGER, IP TEXT, FOREIGN KEY( userID ) REFERENCES users( userID ), FOREIGN KEY( admin ) REFERENCES users( userID ) )" ) if( !scalar @tables );
+    }
   }
 }
 
@@ -188,11 +193,21 @@ my $startupBacklog = 0;
 
 my $addr;
 my @send;
-$send[ SEND_DISABLE ] = sub{};
-$send[ SEND_PIPE ] = sub
+sub sendPipe
 {
-  print( SENDPIPE "$_[ 0 ]\n" );
-};
+  my $msg = $_[ 0 ];
+  local $SIG{ 'PIPE' } = sub
+  {
+    warn( "received sigpipe; trying to reopen pipe file\n" );
+    initmsg();
+    # prevent the original message from being lost
+    @_ = $msg;
+    goto \&sendPipe;
+  };
+  print( SENDPIPE "$msg\n" );
+}
+$send[ SEND_DISABLE ] = sub{};
+$send[ SEND_PIPE ] = \&sendPipe;
 $send[ SEND_RCON ] = sub
 {
   send( RCON, "\xff\xff\xff\xffrcon $rcpass $_[ 0 ]", 0, $addr );
@@ -230,7 +245,6 @@ sub loadcmds
   closedir( CMD );
   print "done\n";
 }
-loadcmds;
 
 # this makes it much easier to send signals
 $0 = __FILE__;
@@ -335,20 +349,12 @@ sub openLog
   }
 }
 
-if( !$backlog )
+sub initmsg
 {
   $sendq = CommandQueue->new(
     'method' => $send[ $sendMethod ],
     'bucketrate' => $sendMethod == SEND_RCON ? 1000 : 1
   );
-
-  $SIG{ 'HUP' } = sub
-  {
-    do( 'config.cfg' );
-    $sendq->set( 'method', $send[ $sendMethod ] );
-    $sendq->set( 'bucketrate', $sendMethod == SEND_RCON ? 1000 : 1 );
-    loadcmds;
-  };
 
   if( $sendMethod == SEND_PIPE )
   {
@@ -375,13 +381,28 @@ if( !$backlog )
     die( "Can't resolve $ip\n" ) unless( $addr );
   }
 }
-else
+
+sub hup
 {
-  print( "Processing backlog on file ${logpath}. This will take a long time for large files.\n" );
+  require( 'config.cfg' );
+  initdb;
+  if( !$backlog )
+  {
+    initmsg;
+    $sendq->set( 'method', $send[ $sendMethod ] );
+    $sendq->set( 'bucketrate', $sendMethod == SEND_RCON ? 1000 : 1 );
+    loadcmds;
+  }
+  else
+  {
+    print( "Processing backlog on file ${logpath}. This will take a long time for large files.\n" );
+  }
+  openLog;
 }
+$SIG{ 'HUP' } = \&hup;
+hup;
 
 my $ingame;
-openLog;
 while( 1 )
 {
   $sendq->send unless( $backlog );
