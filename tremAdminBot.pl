@@ -589,10 +589,10 @@ while( 1 )
         # Commands after this point are not interacted with in startupBacklog conditions
         next if( $startupBacklog );
 
-        next if( $backlog && exists( $cmds{ $acmd } ) );
-
         if( exists( $cmds{ $acmd } ) )
         {
+          next if( $backlog );
+
           @acmdargs = $acmdargs[ 0 ] =~ /$adminargs/go;
           $cmds{ $acmd }( $connectedUsers[ $slot ], \@acmdargs, $timestamp, $db );
         }
