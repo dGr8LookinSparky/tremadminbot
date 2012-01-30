@@ -19,7 +19,7 @@
 
 use common::sense;
 use DBI;
-use Socket qw/:DEFAULT :addrinfo/;
+use Socket 1.93 qw/:DEFAULT :addrinfo/;
 use Data::Dumper;
 use Text::ParseWords;
 use enum;
