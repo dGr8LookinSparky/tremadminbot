@@ -19,8 +19,7 @@
 
 use common::sense;
 use DBI;
-use Socket;
-use Socket6;
+use Socket qw/:DEFAULT :addrinfo/;
 use Data::Dumper;
 use Text::ParseWords;
 use enum;
@@ -214,7 +213,7 @@ $send[ SEND_DISABLE ] = sub{};
 $send[ SEND_PIPE ] = \&sendPipe;
 $send[ SEND_RCON ] = sub
 {
-  send( RCON, "\xff\xff\xff\xffrcon $rcpass $_[ 0 ]", 0, $addr );
+  send( RCON, "\xff\xff\xff\xffrcon $rcpass $_[ 0 ]", 0, $addr->{ addr } );
 };
 $send[ SEND_SCREEN ] = sub
 {
@@ -370,19 +369,18 @@ sub initmsg
   elsif( $sendMethod == SEND_RCON )
   {
     my $proto = getprotobyname( 'udp' );
-    foreach my $af( AF_INET6, AF_INET )
-    {
-      if( $addr = gethostbyname2( $ip, $af ) )
+    ( my $err, $addr ) = getaddrinfo(
+      $ip,
+      $port,
       {
-        print "Server rcon ip $ip resolved as " . inet_ntop( $af, $addr ), "\n";
-        $addr = ( $af eq AF_INET6 ) ?
-          pack_sockaddr_in6( $port, $addr ) :
-          pack_sockaddr_in( $port, $addr );
-        socket( RCON, $af, SOCK_DGRAM, $proto );
-        last;
+        protocol => Socket::IPPROTO_UDP,
+        socktype => SOCK_DGRAM
       }
-    }
-    die( "Can't resolve $ip\n" ) unless( $addr );
+    );
+    die( "Can't resolve $ip\n" ) if( $err || !$addr );
+    print "Server rcon ip $ip resolved as ",
+      ( getnameinfo( $addr->{ addr }, NI_NUMERICHOST ) )[ 1 ], "\n";
+    socket( RCON, $addr->{ family }, SOCK_DGRAM, $proto );
   }
 }
 

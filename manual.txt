@@ -71,18 +71,11 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
 * Some form of database engine. This was written for and tested on sqlite3
 * The following perl modules installed from CPAN:
   - DBI
-  - Data::Dumper
-  - Geo::IP::PurePerl;
-  - Text::ParseWords;
-  - Socket
-  - Socket6
+  - Geo::IP::PurePerl
+  - Text::ParseWords
+  - Socket 1.93
   - enum
-  - FileHandle
-  - File::ReadBackwards;
-  - use Fcntl ':seek';
-  - File::Spec::Functions 'catfile';
-  - Carp;
-  - Time::HiRes 'time';
+  - File::ReadBackwards
 
 * GeoIP database files (http://geolite.maxmind.com/download/geoip/database/)
 * You have three choices for the bot to interact with the server, with
