@@ -380,12 +380,12 @@ while( 1 )
     $linesProcessed++;
 
     # Committing periodically instead of using autocommit speeds the db up massively
-    if( $linesProcessed % 100 )
+    if( $linesProcessed % 100 == 0 )
     {
       $db->commit( );
     }
 
-    if( $backlog && $linesProcessed % 1000 )
+    if( $backlog && $linesProcessed % 1000 == 0 )
     {
       print( "Processed ${linesProcessed} lines. Current timestamp: ${timestamp}\r" );
     }
