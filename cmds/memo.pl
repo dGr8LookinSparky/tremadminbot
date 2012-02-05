@@ -44,41 +44,59 @@ sub
     my $memo = join( " ", @split );
     my $memoq = $db->quote( $memo );
 
-    $memoname =~ tr/\"//d;
-    my $memonameq = $db->quote( $memoname );
-    my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
-
-    my $q = $db->prepare( "SELECT users.userID, users.name FROM users WHERE users.useCount > 10 AND users.name LIKE ${memonamelq} AND users.seenTime > datetime( ${timestamp}, \'-3 months\') ORDER BY CASE WHEN users.name = ${memonameq} then 999999 else users.useCount END DESC LIMIT 10" );
-    $q->execute;
-
     my @matches;
     my $lastmatch;
     my $exact = -1;
-    my $i = 0;
-    while( my $ref = $q->fetchrow_hashref( ) )
+
+    # by userID
+    if( $memoname =~ /^\d+$/ )
     {
-      $exact = $i if( $ref->{ 'name' } eq $memoname );
-      $lastmatch = $ref->{ 'userID' };
-      push( @matches, $ref->{ 'name' } );
-      last if( $exact >= 0 );
-      $i++;
+      my $q = $db->prepare( "SELECT userID, name FROM users WHERE userID=$memoname" );
+      $q->execute( );
+      if( my $ref = $q->fetchrow_hashref )
+      {
+        $lastmatch = $memoname;
+        push( @matches, $ref );
+      }
+      else
+      {
+        replyToPlayer( $user, "^3memo:^7 unknown userID $memoname" );
+        return;
+      }
+    }
+    else
+    {
+      $memoname =~ tr/\"//d;
+      my $memonameq = $db->quote( $memoname );
+      my $memonamelq = $db->quote( "\%" . $memoname . "\%" );
+
+      my $q = $db->prepare( "SELECT userID, name, seenTime FROM users WHERE useCount > 10 AND name LIKE ${memonamelq} AND seenTime > datetime( ${timestamp}, \'-3 months\' ) ORDER BY CASE WHEN name = ${memonameq} then 999999 else useCount END DESC LIMIT 10" );
+      $q->execute;
+
+      my $i = 0;
+      while( my $ref = $q->fetchrow_hashref( ) )
+      {
+        $exact = $i if( $ref->{ 'name' } eq $memoname );
+        $lastmatch = $ref->{ 'userID' };
+        push( @matches, $ref );
+        last if( $exact >= 0 );
+        $i++;
+      }
     }
 
-    if( $exact >= 0 )
+    if( $exact >= 0 || @matches == 1 )
     {
-      my $memonameq = $db->quote( $memoname );
-      $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES (${lastmatch}, $user->{userID}, ${timestamp}, ${memoq})" );
-      replyToPlayer( $user, "^3memo:^7 memo left for ${matches[ $exact ]}" );
-    }
-    elsif( scalar @matches == 1 )
-    {
-      my $memonameq = $db->quote( $lastmatch );
-      $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES (${lastmatch}, $user->{userID}, ${timestamp}, ${memoq})" );
-      replyToPlayer( $user, "^3memo:^7 memo left for ${matches[ 0 ]}" );
+      $exact ||= 0; # warning
+      $db->do( "INSERT INTO memos (userID, sentBy, sentTime, msg) VALUES ($matches[ $exact ]{ 'userID' }, $user->{userID}, ${timestamp}, ${memoq})" );
+      replyToPlayer( $user, "^3memo:^7 memo left for $matches[ $exact ]{ 'name' }" );
     }
     elsif( scalar @matches > 1 )
     {
-      replyToPlayer( $user, "^3memo:^7 multiple matches. Be more specific: " . join( "^3,^7 ", @matches ) );
+      replyToPlayer( $user, "^3memo:^7 multiple matches. Be more specific or use userID: " );
+      foreach( @matches )
+      {
+        replyToPlayer( $user, "^3  $_->{ 'userID' }  $_->{ 'seenTime' } ^7$_->{ 'name' }" );
+      }
     }
     else
     {
