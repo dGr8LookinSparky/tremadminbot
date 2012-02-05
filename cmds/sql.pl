@@ -4,7 +4,7 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  my $q = eval { $db->prepare( $acmdargs ) };
+  my $q = eval { $db->prepare( "@$acmdargs" ) };
   if( $@ && $@ =~ /^(.*) at .*? line \d+/ )
   {
     replyToPlayer( $user, "^3sql:^7 $1" );
