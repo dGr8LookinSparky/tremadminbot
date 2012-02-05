@@ -348,7 +348,7 @@ sub loadadmins
   }
 }
 
-my $inode;
+my( $dev, $inode );
 sub openLog
 {
   my $tries = $_[ 0 ] || 1;
@@ -361,7 +361,7 @@ sub openLog
 
   if( !$backlog )
   {
-    $inode = (stat( FILE ))[ 1 ];
+    ( $dev, $inode ) = stat( FILE );
 
     # Seek back to the start of the current game
     my $bw = File::ReadBackwards->new( $logpath );
@@ -727,7 +727,8 @@ while( 1 )
     }
 
     # the log might have been moved
-    if( !$ingame && ( !-e( $logpath ) || (stat( _ ))[ 1 ] != $inode ) )
+    my @stat = stat( $logpath );
+    if( !$ingame && ( !@stat || $stat[ 0 ] != $dev || $stat[ 1 ] != $inode ) )
     {
       close( FILE );
       print( "Logfile moved, reopening\n" );
