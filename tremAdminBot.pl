@@ -420,11 +420,14 @@ sub initmsg
     print "Server rcon ip $ip resolved as ",
       ( getnameinfo( $addr->{ addr }, NI_NUMERICHOST ) )[ 1 ], "\n";
     socket( RCON, $addr->{ family }, SOCK_DGRAM, $proto );
+    # the entire packet is read in a 1024 length buffer
+    $sendq->set( 'maxlength', 1023 - 6 - length( $rcpass ) );
   }
 }
 
 sub hup
 {
+  close( RCON ) if( !$backlog && $sendMethod == SEND_RCON );
   require( 'config.cfg' );
   cleanup() if( $db );
   initdb;
@@ -1129,7 +1132,6 @@ sub new
     'period' => 0.05,
     'queue' => [],
     'maxlength' => 1023,
-    'sent' => 0,
     'count' => 0,
     'bucketmax' => 10,
     'bucketrate' => 1000,
@@ -1154,30 +1156,32 @@ sub set
 sub send
 {
   my( $cq ) = @_;
+  return unless( @{ $cq->{ 'queue' } } );
   my $t = time;
-
-  if( $t - $cq->{ 'time' } >= $cq->{ 'period' } )
-  {
-    $cq->{ 'sent' } = 0;
-  }
 
   $cq->{ 'count' } -= int( ( $t * 1000 - $cq->{ 'time' } * 1000 ) /
     $cq->{ 'bucketrate' } );
   $cq->{ 'count' } = 0 if( $cq->{ 'count' } < 0 );
 
-  my $remaining = $cq->{ 'maxlength' } - $cq->{ 'sent' };
-  my( $command, $len );
-  while( @{ $cq->{ 'queue' } } && $cq->{ 'count' } < $cq->{ 'bucketmax' } )
+  my $command;
+  my $i = 0;
+  my $r = $cq->{ 'maxlength' };
+  for( ; $i < @{ $cq->{ 'queue' } }; $i++ )
   {
-    $len = length( $cq->{ 'queue' }[ 0 ] );
-    last if( $len > $remaining );
-    $command = shift( @{ $cq->{ 'queue' } } );
-    print "Sent: $command\n";
-    $remaining -= $len;
-    $cq->{ 'sent' } += $len;
-    $cq->{ 'method' }( $command );
-    $cq->{ 'count' }++;
+    $r -= length( $cq->{ 'queue' }[ $i ] ) + ( $i > 0 );
+    last if( $r < -1 );
   }
+  $command = join( ';', splice( @{ $cq->{ 'queue' } }, 0, $i ) );
+  if( $i == 0 )
+  {
+    print "Sent $i commands in ", length( $command ), " characters\n";
+  }
+  else
+  {
+    print "Sent: $command\n";
+  }
+  $cq->{ 'method' }( $command );
+  $cq->{ 'count' }++;
 
   $cq->{ 'time' } = $t if( $command );
 }
@@ -1193,5 +1197,4 @@ sub enqueue
   {
     push( @{ $cq->{ 'queue' } }, $command );
   }
-  $cq->send;
 }
