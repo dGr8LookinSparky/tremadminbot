@@ -1061,7 +1061,7 @@ sub timestamp
   if( $backlog )
   {
     my $out = $servertsstr;
-    $out =~ tr/\//-/;
+    $out =~ tr{/}{-};
     return( $db->quote( $out ) );
   }
   my $q = $db->prepare( "SELECT DATETIME('now','localtime')" );
