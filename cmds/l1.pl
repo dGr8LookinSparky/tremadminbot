@@ -49,7 +49,7 @@ sub
   if( $connectedUsers[ $targslot ]{ 'alevel' } == 0 )
   {
     printToPlayers( "^3l1:^7 $user->{name} set ${connectedUsers[ $targslot ]{ 'name' }} to level 1" );
-    sendconsole( "setlevel ${targslot} 1" );
+    sendconsole( "setlevel ${targslot} 1", PRIO_COMMAND );
   }
   else
   {

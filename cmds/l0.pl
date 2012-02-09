@@ -31,7 +31,7 @@ sub
   if( $targ->{ 'alevel' } == 1 )
   {
     printToPlayers( "^3l0:^7 $user->{ 'name' } set $targ->{ 'name' } to level 0" );
-    sendconsole( "setlevel $targ->{ 'slot' } 0" );
+    sendconsole( "setlevel $targ->{ 'slot' } 0", PRIO_COMMAND );
   }
   else
   {
