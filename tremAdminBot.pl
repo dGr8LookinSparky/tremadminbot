@@ -34,6 +34,7 @@ use File::Spec::Functions 'catfile';
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
 use enum qw( DEM_KICK DEM_BAN DEM_MUTE DEM_DENYBUILD );
+use enum qw( PRIO_NOW=-1 PRIO_COMMAND PRIO_CONSOLE PRIO_GLOBAL PRIO_USER );
 
 # config: best to leave these defaults alone and set each var you want to override from default in config.cfg
 #         e.g. if you want to change $logpath, put a line that says
@@ -471,7 +472,7 @@ while( 1 )
         my @demerits = demerits( 'userID', $connectedUsers[ $slot ]{ 'userID' } );
         if( $demerits[ DEM_KICK ] + $demerits[ DEM_BAN ] > 3 || $demerits[ DEM_DENYBUILD ] > 5 )
         {
-          sendconsole( "a $name may be a troublemaker: Kicks: $demerits[ DEM_KICK ] Bans: $demerits[ DEM_BAN ] Mutes: $demerits[ DEM_MUTE ] Denybuilds: $demerits[ DEM_DENYBUILD ]" );
+          sendconsole( "a $name may be a troublemaker: Kicks: $demerits[ DEM_KICK ] Bans: $demerits[ DEM_BAN ] Mutes: $demerits[ DEM_MUTE ] Denybuilds: $demerits[ DEM_DENYBUILD ]", PRIO_GLOBAL );
         }
       }
       elsif( $arg0 eq "ClientDisconnect" )
@@ -698,7 +699,7 @@ while( 1 )
       $startupBacklog = 0;
 
       # do a readconfig on startup to see that admins are sorted and up to date
-      sendconsole( "readconfig" );
+      sendconsole( "readconfig", PRIO_COMMAND );
 
       print( "Finished startup routines. Watching logfile:\n" );
     }
@@ -728,11 +729,11 @@ sub replyToPlayer
 
   if( $userSlot >= 0 )
   {
-    sendconsole( "pr ${userSlot} \"${string}\"" );
+    sendconsole( "pr ${userSlot} \"${string}\"", PRIO_USER );
   }
   else
   {
-    sendconsole( "echo \"${string}\"" );
+    sendconsole( "echo \"${string}\"", PRIO_CONSOLE );
   }
 }
 
@@ -740,12 +741,17 @@ sub printToPlayers
 {
   my( $string ) = @_;
   $string =~ tr/"//d;
-  sendconsole( "pr -1 \"${string}\"" );
+  sendconsole( "pr -1 \"${string}\"", PRIO_GLOBAL );
 }
 
+# priorities:
+# 0 commands
+# 1 console messages
+# 2 global announcements
+# 3 user messages
 sub sendconsole
 {
-  my( $string ) = @_;
+  my( $string, $priority ) = @_;
   return if( $backlog || $startupBacklog );
 
   $string =~ tr/[\13\15]//d;
@@ -755,7 +761,9 @@ sub sendconsole
     die "Invalid $sendMethod configured";
   }
 
-  $sendq->enqueue( $string );
+  # give it the same priority as messages to players if no priority is specified
+  $priority = 3 unless( defined( $priority ) );
+  $sendq->enqueue( $string, $priority );
 }
 
 sub updateUsers
@@ -1142,10 +1150,10 @@ sub send
   my $r = $cq->{ 'maxlength' };
   for( ; $i < @{ $cq->{ 'queue' } }; $i++ )
   {
-    $r -= length( $cq->{ 'queue' }[ $i ] ) + ( $i > 0 );
+    $r -= length( $cq->{ 'queue' }[ $i ][ 1 ] ) + ( $i > 0 );
     last if( $r < -1 );
   }
-  $command = join( ';', splice( @{ $cq->{ 'queue' } }, 0, $i ) );
+  $command = join( ';', map { $$_[ 1 ] } splice( @{ $cq->{ 'queue' } }, 0, $i ) );
   if( $i == 0 )
   {
     print "Sent $i commands in ", length( $command ), " characters\n";
@@ -1162,13 +1170,17 @@ sub send
 
 sub enqueue
 {
-  my( $cq, $command ) = @_;
+  my( $cq, $command, $priority ) = @_;
   if( length( $command ) > $cq->{ 'maxlength' } )
   {
     Carp::carp( "Command too large (>$cq->{ 'maxlength' }): $command" );
   }
   else
   {
-    push( @{ $cq->{ 'queue' } }, $command );
+    @{ $cq->{ 'queue' } } = sort
+    {
+      $$a[ 0 ] <=> $$b[ 0 ]
+    }
+    @{ $cq->{ 'queue' } }, [ $priority, $command ];
   }
 }
