@@ -761,8 +761,7 @@ sub sendconsole
     die "Invalid $sendMethod configured";
   }
 
-  # give it the same priority as messages to players if no priority is specified
-  $priority = 3 unless( defined( $priority ) );
+  $priority = PRIO_USER unless( defined( $priority ) );
   $sendq->enqueue( $string, $priority );
 }
 
