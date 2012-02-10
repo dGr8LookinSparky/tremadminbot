@@ -33,6 +33,7 @@ use File::Spec::Functions 'catfile';
 use enum qw( CON_DISCONNECTED CON_CONNECTING CON_CONNECTED );
 use enum qw( SEND_DISABLE SEND_PIPE SEND_RCON SEND_SCREEN );
 use enum qw( DEM_KICK DEM_BAN DEM_MUTE DEM_DENYBUILD );
+use enum qw( LOG_TIME LOG_TYPE LOG_ARG );
 use enum qw( PRIO_NOW=-1 PRIO_COMMAND PRIO_CONSOLE PRIO_GLOBAL PRIO_USER );
 
 # config: best to leave these defaults alone and set each var you want to override from default in config.cfg
@@ -276,7 +277,6 @@ sub loadcmds
 $0 = __FILE__;
 
 # returns time (in seconds), followed by log sections ([1] is type)
-use enum qw( LOG_TIME LOG_TYPE LOG_ARG ); # just for convenience
 sub splitLine( $ )
 {
   my $line = $_[0];
