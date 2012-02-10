@@ -188,7 +188,7 @@ my $servertsstr = "";
 # Since the time part at the beginning of a line immediately precedes the log
 # type, but they are not separated by a colon, time must be removed before this
 # regex is used
-my $main = qr/((?>\[[^\]]*\]|"[^"]*"|\d+[ \/:]|[^:]+)+)(?:: |$)?/;
+my $main = qr/((?>\[[^\]]*\]|"[^"]*"|\d+[ \/:]|[^":]+)+)(?:: |$)?/;
 #clientnum "currentname"
 #"adminname" [adminlevel] (guid)
 #flags
