@@ -22,8 +22,6 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /l1 ${acmdargs}\n" );
-
   my $targslot;
 
   if( $user->{ 'alevel' } == 0 )

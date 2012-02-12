@@ -42,7 +42,6 @@ sub
 
   my $gipip;
   my $gipname;
-  print( "Cmd: $user->{name} /geoip ${acmdargs}\n" );
 
   if( $acmdargs =~ /^([\d]+\.[\d]+\.[\d]+\.[\d]+)/ )
   {

@@ -28,7 +28,6 @@ sub
   }
 
   my $memocmd = lc( $1 );
-  print( "Cmd: $user->{name} /memo ${acmdargs}\n" );
 
   if( $memocmd eq "send" )
   {

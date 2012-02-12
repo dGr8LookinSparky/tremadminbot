@@ -22,8 +22,6 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /aliases ${acmdargs}\n" );
-
   if( $acmdargs eq "" )
   {
     replyToPlayer( $user, "^3aliases:^7 usage: aliases <name|slot#>" );

@@ -4,8 +4,6 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /cat ${acmdargs}\n" );
-
   if( open( my $fh, '<', $acmdargs ) )
   {
     while( <$fh> )

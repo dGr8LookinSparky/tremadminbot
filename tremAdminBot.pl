@@ -567,6 +567,7 @@ while( 1 )
         {
           next if( $backlog );
 
+          print "Cmd: $connectedUsers[ $slot ]{ name } /$acmd $acmdargs\n";
           $cmds{ $acmd }( $connectedUsers[ $slot ], $acmdargs, $timestamp, $db );
         }
         elsif( $acmd eq "readconfig" )
