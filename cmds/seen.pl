@@ -22,7 +22,6 @@ sub
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
   my $seenstring = $acmdargs->[ 0 ];
-  print( "Cmd: $user->{name} /seen ${seenstring}\n" );
 
   if( $seenstring eq "" )
   {

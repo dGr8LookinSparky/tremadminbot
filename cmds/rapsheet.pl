@@ -22,8 +22,6 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /rapsheet @$acmdargs\n" );
-
   my( $targ, $param ) = @$acmdargs;
   if( $targ eq "" )
   {

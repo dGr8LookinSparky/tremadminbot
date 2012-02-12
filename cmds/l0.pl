@@ -4,8 +4,6 @@ sub
 {
   my( $user, $acmdargs, $timestamp, $db ) = @_;
 
-  print( "Cmd: $user->{name} /l0 @$acmdargs\n" );
-
   my $targ;
 
   if( $user->{ 'alevel' } == 1 )
