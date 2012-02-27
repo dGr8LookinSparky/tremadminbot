@@ -871,7 +871,7 @@ sub demerits
   if( $type eq 'SUBNET' )
   {
     # this sucks
-    if( $value =~ s/^(?=(?:\d{1,3}\.){3})\d{1,3}$/%/ )
+    if( $value =~ s/^((?:\d{1,3}\.){3})\d{1,3}$/$1%/ )
     {
       $dst = $db->prepare( "SELECT demeritType FROM demerits WHERE $r IP LIKE ?" );
     }
