@@ -842,8 +842,6 @@ sub updateNames
 
   return if( $startupBacklog );
   $nameID ||= "-1";
-
-  $db->do( "UPDATE names SET usecount=useCount+1, userID=${userID} WHERE nameID = ${nameID}" );
 }
 
 sub memocheck
