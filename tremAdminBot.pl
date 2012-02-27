@@ -850,7 +850,7 @@ sub updateNames
   my $userID = $connectedUsers[ $slot ]{ 'userID' };
   my $nameID = "-1";
 
-  my $namesq = $db->prepare( "SELECT nameID FROM names WHERE name = ${nameq} LIMIT 1" );
+  my $namesq = $db->prepare( "SELECT nameID FROM names WHERE name = ${nameq} AND userID = $userID LIMIT 1" );
   $namesq->execute;
 
   my $namesref;
