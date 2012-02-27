@@ -127,15 +127,15 @@ sub initdb
     @tables = $db->tables( undef, undef, "users", undef );
     if( !scalar @tables )
     {
-      $db->do( "CREATE TABLE users( userID INTEGER PRIMARY KEY, name TEXT, GUID TEXT, useCount INTEGER, seenTime DATETIME, IP TEXT, adminLevel INTEGER, city TEXT, region TEXT, country TEXT )" );
+      $db->do( "CREATE TABLE users( userID INTEGER PRIMARY KEY, name TEXT, GUID TEXT, useCount INTEGER, seenTime DATETIME, IP TEXT, city TEXT, region TEXT, country TEXT )" );
       $db->do( "CREATE INDEX guidIndex on users( GUID )" );
-      $db->do( "INSERT INTO users ( name, GUID, useCount, adminLevel ) VALUES ( \'console\', \'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\', 0, 999 )" );
+      $db->do( "INSERT INTO users ( name, GUID, useCount ) VALUES ( \'console\', \'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\', 0 )" );
     }
 
     @tables = $db->tables( undef, undef, "names", undef );
     if( !scalar @tables )
     {
-      $db->do( "CREATE TABLE names( nameID INTEGER PRIMARY KEY, name TEXT, nameColored TEXT, userID INTEGER, useCount INTEGER, seenTime DATETIME, FOREIGN KEY( userID ) REFERENCES users( userID ) )" );
+      $db->do( "CREATE TABLE names( nameID INTEGER PRIMARY KEY, name TEXT, nameColored TEXT, userID INTEGER, useCount INTEGER, FOREIGN KEY( userID ) REFERENCES users( userID ) )" );
       $db->do( "CREATE INDEX nameIndex on names( name )" );
       $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( \'console\', \'console\', 1, 0 )" );
     }
@@ -550,7 +550,7 @@ while( 1 )
 
         my $anameq = $db->quote( $name );
 
-        $db->do( "UPDATE users SET name=${anameq}, adminLevel=$level WHERE userID=${userID}" );
+        $db->do( "UPDATE users SET name=${anameq} WHERE userID=${userID}" );
       }
       elsif( $args[ LOG_TYPE ] eq "ClientRename" )
       {
@@ -563,7 +563,7 @@ while( 1 )
         $connectedUsers[ $slot ]{ 'name' } = $name;
         $connectedUsers[ $slot ]{ 'nameColored' } = $name2;
 
-        updateNames( $timestamp, $slot );
+        updateNames( $slot );
       }
       elsif( $args[ LOG_TYPE ] eq "RealTime" )
       {
@@ -802,13 +802,15 @@ sub updateUsers
   my $ip = $connectedUsers[ $slot ]{ 'IP' };
   my $ipq = $db->quote( $ip );
 
-  my $usersq = $db->prepare( "SELECT userID, adminLevel FROM users WHERE GUID = ${guidq} LIMIT 1" );
+  my $usersq = $db->prepare( "SELECT userID FROM users WHERE GUID = ${guidq} LIMIT 1" );
   $usersq->execute;
 
   my $user;
 
   if( $user = $usersq->fetchrow_hashref( ) )
-  { }
+  {
+    $db->do( "UPDATE users SET name=$nameq, useCount=useCount+1, seenTime=$timestamp, ip=$ipq WHERE userID=$user->{ userID }" );
+  }
   else
   {
     my $city = '';
@@ -825,42 +827,22 @@ sub updateUsers
     $region = $db->quote( $region );
     $country = $db->quote( $country );
 
-    $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, adminLevel, city, region, country ) VALUES ( ${nameq}, ${guidq}, 0, ${timestamp}, ${ipq}, 0, ${city}, ${region}, ${country} )" );
+    $db->do( "INSERT INTO users ( name, GUID, useCount, seenTime, IP, city, region, country ) VALUES ( ${nameq}, ${guidq}, 1, ${timestamp}, ${ipq}, ${city}, ${region}, ${country} )" );
     $usersq->execute;
     $user = $usersq->fetchrow_hashref( );
   }
 
   my $userID = $user->{ 'userID' };
-  my $adminLevel = $user->{ 'adminLevel' };
   $connectedUsers[ $slot ]{ 'userID' } = $userID;
 
   return if( $startupBacklog );
 
-  updateNames( $timestamp, $slot );
-
-  if( !$adminLevel )
-  {
-    my $namesq = $db->prepare( "SELECT name FROM names WHERE userID = $userID ORDER BY useCount DESC LIMIT 1" );
-    $namesq->execute;
-    if( my $maxname = $namesq->fetchrow_hashref( ) )
-    {
-      my $maxnameq = $db->quote( $maxname->{ 'name' } );
-      $db->do( "UPDATE users SET name=${maxnameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
-    }
-    else
-    {
-      $db->do( "UPDATE users SET name=${nameq}, useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
-    }
-  }
-  else
-  {
-    $db->do( "UPDATE users SET useCount=useCount+1, seenTime=${timestamp}, ip=${ipq} WHERE userID=${userID}" );
-  }
+  updateNames( $slot );
 }
 
 sub updateNames
 {
-  my( $timestamp, $slot ) = @_;
+  my( $slot ) = @_;
   my $name = lc( $connectedUsers[ $slot ]{ 'name' } );
   my $nameq = $db->quote( $name );
   my $namec = $connectedUsers[ $slot ]{ 'nameColored' };
@@ -876,17 +858,18 @@ sub updateNames
   if( my $ref = $namesq->fetchrow_hashref( ) )
   {
     $nameID = $ref->{nameID};
+    $db->do( "UPDATE names SET useCount=useCount+1, userID=$userID WHERE nameID=$nameID" );
   }
   else
   {
-    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount, seenTime ) VALUES ( ${nameq}, ${namecq}, ${userID}, 0, ${timestamp} )" );
+    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( ${nameq}, ${namecq}, ${userID}, 0 )" );
     $nameID = $db->last_insert_id( undef, undef, "names", "nameID" );
   }
 
   return if( $startupBacklog );
   $nameID ||= "-1";
 
-  $db->do( "UPDATE names SET usecount=useCount+1, seenTime=${timestamp}, userID=${userID} WHERE nameID = ${nameID}" );
+  $db->do( "UPDATE names SET usecount=useCount+1, userID=${userID} WHERE nameID = ${nameID}" );
 }
 
 sub memocheck
