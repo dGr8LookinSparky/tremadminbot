@@ -832,7 +832,7 @@ sub updateNames
   if( my $ref = $namesq->fetchrow_hashref( ) )
   {
     $nameID = $ref->{nameID};
-    $db->do( "UPDATE names SET useCount=useCount+1, userID=$userID WHERE nameID=$nameID" );
+    $db->do( "UPDATE names SET useCount=useCount+1 WHERE nameID=$nameID" );
   }
   else
   {
