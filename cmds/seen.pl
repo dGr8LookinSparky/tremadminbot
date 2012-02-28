@@ -32,16 +32,21 @@ sub
   $seenstring = lc( $seenstring );
   my $seenstringq = $db->quote( $seenstring );
   my $seenstringlq = $db->quote( "\%" . $seenstring . "\%" );
-  my $q = $db->prepare( "SELECT name, seenTime, useCount FROM names WHERE name like ${seenstringlq} ORDER BY CASE WHEN name = ${seenstringq} THEN 999999 else useCount END DESC LIMIT 4" );
+  my $q = $db->prepare( "SELECT userID, name, seenTime, useCount FROM names WHERE name like ${seenstringlq} ORDER BY CASE WHEN name = ${seenstringq} THEN 999999 else useCount END DESC LIMIT 4" );
   $q->execute;
 
   my $rescount = 0;
   while( my $ref = $q->fetchrow_hashref( ) )
   {
+    my $userID = $ref->{'userID'};
+    $q = $db->prepare( "SELECT name, seenTime FROM users WHERE userID = $userID" );
+    $q->execute;
+    my $u = $q->fetchrow_hashref;
     my $seenname = $ref->{'name'};
-    my $seentime = $ref->{'seenTime'};
+    my $realname = $u->{'name'};
+    my $seentime = $u->{'seenTime'};
     my $seencount = $ref->{'useCount'};
-    replyToPlayer( $user, "^3seen:^7 Player ${seenname} seen ${seencount} times, last: ${seentime}" );
+    replyToPlayer( $user, "^3seen:^7 Player ${seenname} ($realname #$userID) seen ${seencount} times, last: ${seentime}" );
     ++$rescount;
     last if( $rescount > 2 );
   }
