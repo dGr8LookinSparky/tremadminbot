@@ -32,7 +32,7 @@ sub
   $seenstring = lc( $seenstring );
   my $seenstringq = $db->quote( $seenstring );
   my $seenstringlq = $db->quote( "\%" . $seenstring . "\%" );
-  my $q = $db->prepare( "SELECT userID, name, seenTime, useCount FROM names WHERE name like ${seenstringlq} ORDER BY CASE WHEN name = ${seenstringq} THEN 999999 else useCount END DESC LIMIT 4" );
+  my $q = $db->prepare( "SELECT userID, name, useCount FROM names WHERE name like ${seenstringlq} ORDER BY CASE WHEN name = ${seenstringq} THEN 999999 else useCount END DESC LIMIT 4" );
   $q->execute;
 
   my $rescount = 0;
