@@ -836,12 +836,9 @@ sub updateNames
   }
   else
   {
-    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( ${nameq}, ${namecq}, ${userID}, 0 )" );
+    $db->do( "INSERT INTO names ( name, nameColored, userID, useCount ) VALUES ( ${nameq}, ${namecq}, ${userID}, 1 )" );
     $nameID = $db->last_insert_id( undef, undef, "names", "nameID" );
   }
-
-  return if( $startupBacklog );
-  $nameID ||= "-1";
 }
 
 sub memocheck
