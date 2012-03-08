@@ -408,7 +408,6 @@ sub initmsg
   }
   elsif( $sendMethod == SEND_RCON )
   {
-    my $proto = getprotobyname( 'udp' );
     ( my $err, $addr ) = getaddrinfo(
       $ip,
       $port,
@@ -420,7 +419,7 @@ sub initmsg
     die( "Can't resolve $ip\n" ) if( $err || !$addr );
     print "Server rcon ip $ip resolved as ",
       ( getnameinfo( $addr->{ addr }, NI_NUMERICHOST ) )[ 1 ], "\n";
-    socket( RCON, $addr->{ family }, SOCK_DGRAM, $proto );
+    socket( RCON, $addr->{ family }, SOCK_DGRAM, $addr->{ protocol } );
     # the entire packet is read in a 1024 length buffer
     $sendq->set( 'maxlength', 1023 - 6 - length( $rcpass ) );
   }
