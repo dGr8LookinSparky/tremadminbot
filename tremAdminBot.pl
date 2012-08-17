@@ -945,7 +945,7 @@ sub findadmin
     {
       if( $match )
       {
-        $$err = "more than one match.  use the listplayers or listadmins to " .
+        $$err = "more than one match.  use listplayers or listadmins to " .
           "find an appropriate number to use instead of name.";
         return;
       }
