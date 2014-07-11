@@ -20,7 +20,6 @@
 use common::sense;
 use DBI;
 use Socket 1.93 qw/:DEFAULT :addrinfo/;
-use Data::Dumper;
 use Text::ParseWords;
 use enum;
 use FileHandle;
@@ -1079,7 +1078,6 @@ sub cleanup
 ####
 package CommandQueue;
 use common::sense;
-use Data::Dumper;
 use Carp;
 use Time::HiRes 'time';
 
