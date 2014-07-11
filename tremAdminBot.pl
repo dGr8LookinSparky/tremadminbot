@@ -99,7 +99,8 @@ our $plugindir = 'cmds';
 our $dir;
 
 # allow specifying config file to use
-do (@ARGV ? $ARGV[0] : 'config.cfg');
+my $config = @ARGV ? $ARGV[0] : 'config.cfg';
+do ($config);
 
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
@@ -401,7 +402,7 @@ sub initmsg
 sub hup
 {
   close( RCON ) if( !$backlog && $sendMethod == SEND_RCON );
-  require( 'config.cfg' );
+  do( $config );
   cleanup() if( $db );
   initdb;
   if( !$backlog )
