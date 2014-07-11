@@ -112,7 +112,7 @@ $SIG{INT} = sub
 $SIG{__DIE__} = \&errorHandler;
 
 if ($dir) {
-	die ("Cannot change to directory '$dir': $!"\n)
+	die ("Cannot change to directory '$dir': $!\n")
 		unless (chdir ($dir));
 }
 
