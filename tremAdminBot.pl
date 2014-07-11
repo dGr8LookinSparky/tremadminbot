@@ -92,7 +92,11 @@ our $screenWindow = "0";
 # only show demerits over the past x days (or forever if <= 0)
 our $demeritdays = 90;
 
-do 'config.cfg';
+# change to this directory
+our $dir;
+
+# allow specifying config file to use
+do (@ARGV ? $ARGV[0] : 'config.cfg');
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
 
@@ -102,6 +106,11 @@ $SIG{INT} = sub
   exit;
 };
 $SIG{__DIE__} = \&errorHandler;
+
+if ($dir) {
+	die ("Cannot change to directory '$dir': $!"\n)
+		unless (chdir ($dir));
+}
 
 print( "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n" );
 print( "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@mercenariesguild.net)\n" );
