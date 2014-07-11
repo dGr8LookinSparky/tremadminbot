@@ -92,11 +92,15 @@ our $screenWindow = "0";
 # only show demerits over the past x days (or forever if <= 0)
 our $demeritdays = 90;
 
+# directory to plugins
+our $plugindir = 'cmds';
+
 # change to this directory
 our $dir;
 
 # allow specifying config file to use
 do (@ARGV ? $ARGV[0] : 'config.cfg');
+
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
 
@@ -239,13 +243,13 @@ sub loadcmds
 {
   my( $sub, $cmd );
   %cmds = ();
-  return unless( opendir( CMD, 'cmds' ) );
+  return unless( opendir( CMD, $plugindir ) );
   print "Loading admin command handlers...\n";
   foreach( readdir( CMD ) )
   {
     next unless( /^(.+)\.pl$/i );
     $cmd = lc( $1 );
-    $sub = do( catfile( 'cmds', $_ ) );
+    $sub = do( catfile( $plugindir, $_ ) );
     unless( $sub )
     {
       warn( "$cmd: ", $@ || $!, "\n" );
