@@ -129,6 +129,7 @@ my $db;
 sub initdb
 {
   $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
+  $db->do( "PRAGMA foreign_keys = ON" );
 
   # uncomment to dump all db activity to stdout
   #`$db->{TraceLevel} = 1;
