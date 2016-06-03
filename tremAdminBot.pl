@@ -20,7 +20,6 @@
 use common::sense;
 use DBI;
 use Socket 1.93 qw/:DEFAULT :addrinfo/;
-use Data::Dumper;
 use enum;
 use FileHandle;
 use File::ReadBackwards;
@@ -93,7 +92,16 @@ our $screenWindow = "0";
 # only show demerits over the past x days (or forever if <= 0)
 our $demeritdays = 90;
 
-do 'config.cfg';
+# directory to plugins
+our $plugindir = 'cmds';
+
+# change to this directory
+our $dir;
+
+# allow specifying config file to use
+my $config = @ARGV ? $ARGV[0] : 'config.cfg';
+do ($config);
+
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
 
@@ -103,6 +111,11 @@ $SIG{INT} = sub
   exit;
 };
 $SIG{__DIE__} = \&errorHandler;
+
+if ($dir) {
+	die ("Cannot change to directory '$dir': $!\n")
+		unless (chdir ($dir));
+}
 
 print( "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n" );
 print( "TremAdminBot Copyright (C) 2011 Christopher Schwarz (lakitu7\@mercenariesguild.net)\n" );
@@ -116,6 +129,7 @@ my $db;
 sub initdb
 {
   $db = DBI->connect( "dbi:SQLite:${dbfile}", "", "", { RaiseError => 1, AutoCommit => 0 } ) or die( "Database error: " . $DBI::errstr );
+  $db->do( "PRAGMA foreign_keys = ON" );
 
   # uncomment to dump all db activity to stdout
   #`$db->{TraceLevel} = 1;
@@ -254,13 +268,13 @@ sub loadcmds
 {
   my( $sub, $cmd );
   %cmds = ();
-  return unless( opendir( CMD, 'cmds' ) );
+  return unless( opendir( CMD, $plugindir ) );
   print "Loading admin command handlers...\n";
   foreach( readdir( CMD ) )
   {
     next unless( /^(.+)\.pl$/i );
     $cmd = lc( $1 );
-    $sub = do( catfile( 'cmds', $_ ) );
+    $sub = do( catfile( $plugindir, $_ ) );
     unless( $sub )
     {
       warn( "$cmd: ", $@ || $!, "\n" );
@@ -428,7 +442,7 @@ sub initmsg
 sub hup
 {
   close( RCON ) if( !$backlog && $sendMethod == SEND_RCON );
-  require( 'config.cfg' );
+  do( $config );
   cleanup() if( $db );
   initdb;
   if( !$backlog )
@@ -971,7 +985,7 @@ sub findadmin
     {
       if( $match )
       {
-        $$err = "more than one match.  use the listplayers or listadmins to " .
+        $$err = "more than one match.  use listplayers or listadmins to " .
           "find an appropriate number to use instead of name.";
         return;
       }
@@ -1105,7 +1119,6 @@ sub cleanup
 ####
 package CommandQueue;
 use common::sense;
-use Data::Dumper;
 use Carp;
 use Time::HiRes 'time';
 
