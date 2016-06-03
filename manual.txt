@@ -1,8 +1,8 @@
 TremAdminBot: A bot that provides some helper functions for Tremulous server 
 administration
 
-By Chris "Lakitu7" Schwarz, lakitu7@mercenariesguild.net
-http://projects.mercenariesguild.net/projects/tremadminbot
+https://github.com/undeference/tremadminbot
+By Chris "Lakitu7" Schwarz
 
 This bot handles functions useful to tremulous admins that would not be 
 practical to do within game itself, such as asynchronous database and dns 
@@ -12,7 +12,7 @@ It is written in perl and intended to run on the same server as the game
 server, watching games.log, and acting/responding when appropriate.
 
 Check out the source with:
-git clone git://git.mercenariesguild.net/tremadminbot.git
+git clone https://github.com/undeference/tremadminbot.git
 
 ------ FEATURES ------
 * Keeps track of server users, the countries where they connect from, their
@@ -81,9 +81,7 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
 * You have three choices for the bot to interact with the server, with
   differing requirements:
   - COM_PIPEFILE: Recommended and best option. LINUX ONLY. Requires tremded
-    binary be compiled after r2208, or you otherwise apply the patch to an
-    earlier version:
-    http://lakitu.mercenariesguild.net/temp/com_pipefile2.patch
+    binary with com_pipefile support
   - RCON: Rcon must be enabled on the server, and you must provide the address
     and password. Usage appears in the server logs as regular rcon usage.
   - SCREEN: This uses some hacks to send the commands to the screen session.
@@ -95,7 +93,7 @@ git clone git://git.mercenariesguild.net/tremadminbot.git
 
 ------ INSTALL ------
 * If you meet all the requirements above, download the script:
-  git clone git://git.mercenariesguild.net/tremadminbot.git
+  git clone https://github.com/undeference/tremadminbot.git
 * Trem server configuration:
   - Set g_logfilesync 1
   - If using com_pipefile communication, set com_pipefile
@@ -166,5 +164,5 @@ to run it. If you do not understand most of what I am talking about, this is
 probably not for you, sorry.
 
 Please report all bugs, feature requests, and support requests to the project
-homepage/tracker:
-http://projects.mercenariesguild.net/projects/tremadminbot
+homepage:
+https://github.com/undeference/tremadminbot/issues
