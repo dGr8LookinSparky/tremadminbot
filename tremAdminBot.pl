@@ -104,6 +104,20 @@ do ($config);
 
 # ------------ CONFIG STUFF ENDS HERE. DON'T MODIFY AFTER THIS OR ELSE!! ----------------
 
+our $pidfile;
+if( $pidfile )
+{
+  if( open( my $fh, '<', $pidfile ) )
+  {
+    chomp( my $pid = <$fh> );
+    close( $fh );
+    die( "Already running with pid $pid\n" ) if( kill( 0, $pid ) );
+  }
+  open( my $fh, '>', $pidfile );
+  print $fh $$, "\n";
+  close( $fh );
+}
+
 
 $SIG{INT} = sub
 {
@@ -112,9 +126,9 @@ $SIG{INT} = sub
 };
 $SIG{__DIE__} = \&errorHandler;
 
-if ($dir) {
-	die ("Cannot change to directory '$dir': $!\n")
-		unless (chdir ($dir));
+if( $dir )
+{
+  die( "Cannot change to directory '$dir': $!\n" ) unless( chdir( $dir ) );
 }
 
 print( "TremAdminBot: A bot that provides some helper functions for Tremulous server administration\n" );
@@ -1087,6 +1101,7 @@ sub cleanup
   close( FILE );
   close( SENDPIPE ) if( $sendMethod == SEND_PIPE );
   $db->disconnect( ) or warn( "Disconnection failed: $DBI::errstr\n" );
+  unlink( $pidfile ) if( $pidfile );
 }
 
 
